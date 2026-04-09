@@ -1,0 +1,101 @@
+'use client';
+
+import { createContext, useContext, useEffect, useState } from 'react';
+import { onAuthStateChanged, signOut } from 'firebase/auth';
+import { auth } from '@/lib/firebase';
+import { getUser } from '@/lib/firestore';
+
+const AuthContext = createContext(null);
+
+// Firestore doc ID = phone digits only
+const phoneToDocId = (phone) => String(phone || '').replace(/\D/g, '');
+
+export const AuthProvider = ({ children }) => {
+  const [currentUser, setCurrentUser] = useState(null);
+  const [userRole, setUserRole] = useState(null);
+  const [userApproved, setUserApproved] = useState(null); // null = loading
+  const [userPhone, setUserPhone] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      try {
+        if (user) {
+          setCurrentUser(user);
+          // Use phone number (E.164) from Firebase Auth as Firestore doc ID
+          const phone = user.phoneNumber; // e.g. "+919876543210"
+          setUserPhone(phone);
+
+          if (phone) {
+            const userResult = await getUser(phone);
+            if (userResult.success) {
+              const data = userResult.data;
+              setUserRole(data.role ?? null);
+              const isAdmin = data.role === 'admin' || data.role === 'super_admin';
+              setUserApproved(isAdmin ? true : (data.approved ?? false));
+            } else {
+              setUserRole(null);
+              setUserApproved(false);
+            }
+          } else {
+            setUserRole(null);
+            setUserApproved(false);
+          }
+        } else {
+          setCurrentUser(null);
+          setUserRole(null);
+          setUserApproved(null);
+          setUserPhone(null);
+        }
+      } catch (err) {
+        console.error('[useAuth] Error:', err);
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    });
+
+    return unsubscribe;
+  }, []);
+
+  const logout = async () => {
+    try {
+      await signOut(auth);
+      setCurrentUser(null);
+      setUserRole(null);
+      setUserApproved(null);
+      setUserPhone(null);
+      return { success: true };
+    } catch (err) {
+      console.error('[useAuth] Logout error:', err);
+      setError(err.message);
+      return { success: false, error: err.message };
+    }
+  };
+
+  const value = {
+    currentUser,
+    userRole,
+    userApproved,
+    userPhone,
+    loading,
+    error,
+    logout,
+    isAuthenticated: !!currentUser,
+    isSuperAdmin: userRole === 'super_admin',
+    isAdmin: userRole === 'admin' || userRole === 'super_admin',
+  };
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+};
+
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error('useAuth must be used within AuthProvider');
+  }
+  return context;
+};
+
+export default useAuth;
