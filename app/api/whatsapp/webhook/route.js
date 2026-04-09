@@ -40,9 +40,18 @@ export async function POST(request) {
       return NextResponse.json({ status: 'ok' }, { status: 200 });
     }
 
-    const from = payload.from;
+    // MSG91 puts "from" at different locations depending on version — try all
+    const from =
+      payload.from ||
+      body.from ||
+      payload.sender ||
+      payload.data?.from ||
+      payload.mobile ||
+      payload.phone ||
+      null;
+
     if (!from) {
-      console.warn('[Webhook] No "from" in payload - ignoring');
+      console.warn('[Webhook] No "from" found anywhere in payload - ignoring. Full body:', JSON.stringify(body));
       return NextResponse.json({ status: 'ok' }, { status: 200 });
     }
 
@@ -52,8 +61,22 @@ export async function POST(request) {
     const msgType = payload.type;
     const innerPayload = payload.payload;
 
+    // Helper: MSG91 sometimes double-encodes text as a JSON string e.g. '{"text":"Hi"}'
+    const extractText = (raw) => {
+      if (!raw) return '';
+      if (typeof raw === 'object') return raw.body || raw.text || raw.payload || '';
+      const str = String(raw);
+      try {
+        const parsed = JSON.parse(str);
+        if (typeof parsed === 'object') return parsed.text || parsed.body || parsed.payload || str;
+        return String(parsed);
+      } catch (_) {
+        return str;
+      }
+    };
+
     if (msgType === 'text') {
-      messageText = innerPayload?.text || innerPayload?.payload || '';
+      messageText = extractText(innerPayload?.text) || extractText(innerPayload?.payload) || extractText(innerPayload) || '';
     } else if (msgType === 'interactive') {
       const interactiveType = innerPayload?.type;
       if (interactiveType === 'button_reply') {
