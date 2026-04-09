@@ -8,34 +8,46 @@ import { NextResponse } from 'next/server';
 import { handleMessage } from '@/lib/conversation';
 import { sendConversationMessage } from '@/lib/whatsapp';
 
-// ─── GET: MSG91 verification ──────────────────────────────────────────────────
+// GET: MSG91 verification
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
   const challenge = searchParams.get('hub.challenge');
+  console.log('[Webhook] GET verify hit | challenge:', challenge);
   if (challenge) {
     return new NextResponse(challenge, { status: 200 });
   }
   return NextResponse.json({ status: 'CrewHive WhatsApp Webhook active' });
 }
 
-// ─── POST: Incoming message ───────────────────────────────────────────────────
+// POST: Incoming message
 export async function POST(request) {
-  try {
-    const body = await request.json();
+  console.log('WEBHOOK HIT');
 
-    // MSG91 webhook payload structure:
-    // { payload: { from: "919...", type: "text"|"interactive", payload: { ... } } }
+  let body;
+  try {
+    body = await request.json();
+  } catch (parseErr) {
+    console.error('[Webhook] Failed to parse JSON body:', parseErr.message);
+    return NextResponse.json({ status: 'ok' }, { status: 200 });
+  }
+
+  console.log('Incoming payload:', JSON.stringify(body, null, 2));
+
+  try {
     const payload = body?.payload;
     if (!payload) {
+      console.warn('[Webhook] No payload in body - ignoring');
       return NextResponse.json({ status: 'ok' }, { status: 200 });
     }
 
-    const from = payload.from; // e.g. "919876543210"
+    const from = payload.from;
     if (!from) {
+      console.warn('[Webhook] No "from" in payload - ignoring');
       return NextResponse.json({ status: 'ok' }, { status: 200 });
     }
 
-    // Extract message text from different types
+    console.log('[Webhook] Message from:', from, '| type:', payload.type);
+
     let messageText = '';
     const msgType = payload.type;
     const innerPayload = payload.payload;
@@ -43,7 +55,6 @@ export async function POST(request) {
     if (msgType === 'text') {
       messageText = innerPayload?.text || innerPayload?.payload || '';
     } else if (msgType === 'interactive') {
-      // Button reply or list reply — use the id as the message
       const interactiveType = innerPayload?.type;
       if (interactiveType === 'button_reply') {
         messageText = innerPayload?.id || innerPayload?.title || '';
@@ -53,26 +64,37 @@ export async function POST(request) {
         messageText = innerPayload?.id || String(innerPayload || '');
       }
     } else {
-      // Unsupported type — re-prompt
-      messageText = '';
+      console.log('[Webhook] Unsupported message type:', msgType, '- sending fallback');
     }
 
+    console.log('[Webhook] Extracted messageText:', JSON.stringify(messageText));
+
     if (!messageText) {
+      console.log('[Webhook] Empty messageText - sending re-prompt to', from);
+      await sendConversationMessage(from, {
+        type: 'text',
+        text: "Sorry, I didn't understand that. Type Hi to get started!",
+      });
       return NextResponse.json({ status: 'ok' }, { status: 200 });
     }
 
-    // Process through conversation engine
-    const result = await handleMessage({ userId: from, message: messageText });
+    console.log('[Webhook] Routing to conversation engine | userId:', from);
+    let result = await handleMessage({ userId: from, message: messageText });
 
-    // Send the response back via MSG91
+    console.log('Conversation result:', JSON.stringify(result, null, 2));
+
+    if (!result || !result.text) {
+      console.warn('[Webhook] Conversation result missing text - using fallback');
+      result = { type: 'text', text: 'Something went wrong. Please try again.' };
+    }
+
     await sendConversationMessage(from, result);
+    console.log('Reply sent to:', from);
 
-    // Always return 200 to prevent MSG91 retries
     return NextResponse.json({ status: 'ok' }, { status: 200 });
 
   } catch (error) {
-    console.error('[Webhook] Error:', error);
-    // Return 200 even on error — prevents infinite MSG91 retries
+    console.error('[Webhook] Unhandled error:', error);
     return NextResponse.json({ status: 'ok' }, { status: 200 });
   }
 }

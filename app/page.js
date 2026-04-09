@@ -46,12 +46,7 @@ export default function Home() {
             <span className="text-xl font-bold text-foreground">CrewHive</span>
           </div>
           <div className="flex items-center gap-3">
-            <Link
-              href="/dev/simulator"
-              className="text-sm text-muted-foreground hover:text-primary transition-colors hidden sm:block"
-            >
-              Try Simulator
-            </Link>
+
             <Link
               href="/auth/phone"
               className="flex items-center gap-2 bg-primary text-primary-foreground text-sm font-semibold px-4 py-2 rounded-xl hover:bg-primary/90 transition-all shadow-lg shadow-primary/25"
@@ -96,7 +91,7 @@ export default function Home() {
             </svg>
           </Link>
           <Link
-            href="/dev/simulator"
+            href="/auth/phone"
             className="inline-flex items-center justify-center gap-2 bg-card border border-border text-foreground font-semibold px-8 py-4 rounded-2xl hover:border-primary/50 hover:bg-primary/5 transition-all text-base"
           >
             <span className="text-xl">💬</span>
@@ -241,7 +236,7 @@ export default function Home() {
           <p className="text-xs text-muted-foreground">© 2026 CrewHive. All rights reserved.</p>
           <div className="flex gap-4">
             <Link href="/auth/phone" className="text-xs text-muted-foreground hover:text-primary transition-colors">Sign In</Link>
-            <Link href="/dev/simulator" className="text-xs text-muted-foreground hover:text-primary transition-colors">Simulator</Link>
+
           </div>
         </div>
       </footer>
