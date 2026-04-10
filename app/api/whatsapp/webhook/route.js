@@ -55,23 +55,22 @@ export async function POST(request) {
 
     // MSG91 puts "from" at different locations — try body, headers, and query params
     const from =
-      payload.from ||
-      body.from ||
-      payload.sender ||
-      payload.data?.from ||
-      payload.mobile ||
-      payload.phone ||
-      // Check common MSG91 headers
-      request.headers.get('x-from') ||
-      request.headers.get('x-sender') ||
-      request.headers.get('x-mobile') ||
-      request.headers.get('x-whatsapp-from') ||
-      request.headers.get('from') ||
-      // Check query params
-      new URL(request.url).searchParams.get('from') ||
-      new URL(request.url).searchParams.get('mobile') ||
-      new URL(request.url).searchParams.get('sender') ||
-      null;
+  payload?.source ||   // ✅ ADD THIS (MOST IMPORTANT FIX)
+  payload?.from ||
+  body?.from ||
+  payload?.sender ||
+  payload?.data?.from ||
+  payload?.mobile ||
+  payload?.phone ||
+  request.headers.get('x-from') ||
+  request.headers.get('x-sender') ||
+  request.headers.get('x-mobile') ||
+  request.headers.get('x-whatsapp-from') ||
+  request.headers.get('from') ||
+  new URL(request.url).searchParams.get('from') ||
+  new URL(request.url).searchParams.get('mobile') ||
+  new URL(request.url).searchParams.get('sender') ||
+  null;
 
     if (!from) {
       console.warn('[Webhook] No "from" found anywhere in payload - ignoring. Full body:', JSON.stringify(body));
