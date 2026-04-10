@@ -23,19 +23,6 @@ export async function GET(request) {
 export async function POST(request) {
   console.log('WEBHOOK HIT');
 
-  // Log all headers so we can find where MSG91 puts the sender phone
-  const headersObj = {};
-  request.headers.forEach((val, key) => { headersObj[key] = val; });
-  console.log('Request headers:', JSON.stringify(headersObj, null, 2));
-
-  // Log query params
-  const { searchParams } = new URL(request.url);
-  const queryObj = {};
-  searchParams.forEach((val, key) => { queryObj[key] = val; });
-  if (Object.keys(queryObj).length > 0) {
-    console.log('Query params:', JSON.stringify(queryObj));
-  }
-
   let body;
   try {
     body = await request.json();
@@ -53,24 +40,16 @@ export async function POST(request) {
       return NextResponse.json({ status: 'ok' }, { status: 200 });
     }
 
-    // MSG91 puts "from" at different locations — try body, headers, and query params
+    // MSG91 sends sender phone in payload.source
     const from =
-  payload?.source ||   // ✅ ADD THIS (MOST IMPORTANT FIX)
-  payload?.from ||
-  body?.from ||
-  payload?.sender ||
-  payload?.data?.from ||
-  payload?.mobile ||
-  payload?.phone ||
-  request.headers.get('x-from') ||
-  request.headers.get('x-sender') ||
-  request.headers.get('x-mobile') ||
-  request.headers.get('x-whatsapp-from') ||
-  request.headers.get('from') ||
-  new URL(request.url).searchParams.get('from') ||
-  new URL(request.url).searchParams.get('mobile') ||
-  new URL(request.url).searchParams.get('sender') ||
-  null;
+      payload?.source ||
+      payload?.from ||
+      body?.from ||
+      payload?.sender ||
+      payload?.data?.from ||
+      payload?.mobile ||
+      payload?.phone ||
+      null;
 
     if (!from) {
       console.warn('[Webhook] No "from" found anywhere in payload - ignoring. Full body:', JSON.stringify(body));
