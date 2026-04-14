@@ -118,16 +118,26 @@ export default function PhoneAuthPage() {
             {error && (
               <div className="flex flex-col gap-1 p-3.5 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 text-sm">
                 <span>{error}</span>
-                {error.includes('Blaze') || error.includes('test phone') ? (
+                {(error.includes('not enabled') || error.includes('Blaze') || error.includes('test phone')) && (
                   <a
                     href="https://console.firebase.google.com/project/_/authentication/providers"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-xs text-red-300 underline mt-1"
+                    className="inline-flex items-center gap-1 text-xs text-amber-400 underline mt-1 font-medium"
                   >
-                    Open Firebase Console → Authentication
+                    → Firebase Console → Authentication → Sign-in method
                   </a>
-                ) : null}
+                )}
+                {(error.includes('Authorized domains') || error.includes('domain') || error.includes('internal error')) && (
+                  <a
+                    href="https://console.firebase.google.com/project/_/authentication/settings"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 text-xs text-amber-400 underline mt-1 font-medium"
+                  >
+                    → Firebase Console → Authentication → Settings → Authorized domains
+                  </a>
+                )}
               </div>
             )}
 
