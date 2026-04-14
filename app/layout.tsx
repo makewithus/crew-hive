@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { Space_Grotesk } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import { AuthProvider } from '@/hooks/useAuth'
+import { Toaster } from 'sonner'
 import './globals.css'
 
 const spaceGrotesk = Space_Grotesk({ subsets: ["latin"], variable: '--font-space-grotesk' });
@@ -40,6 +41,13 @@ export default function RootLayout({
         <AuthProvider>
           {children}
         </AuthProvider>
+        <Toaster
+          theme="dark"
+          position="top-center"
+          richColors
+          closeButton
+          toastOptions={{ style: { fontFamily: 'var(--font-space-grotesk)' } }}
+        />
         {process.env.NODE_ENV === 'production' && <Analytics />}
       </body>
     </html>

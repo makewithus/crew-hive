@@ -5,12 +5,13 @@ import { useRouter } from 'next/navigation';
 import { verifyOtp, fetchUserRole } from '@/lib/auth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { toast } from 'sonner';
 import Link from 'next/link';
 
 export default function VerifyOtpPage() {
   const [otp, setOtp] = useState('');
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [sessionExpired, setSessionExpired] = useState(false);
   const [resendTimer, setResendTimer] = useState(0);
   const router = useRouter();
 
@@ -27,22 +28,36 @@ export default function VerifyOtpPage() {
 
   const handleOtpChange = (e) => {
     setOtp(e.target.value.replace(/\D/g, '').slice(0, 6));
-    setError('');
+    setSessionExpired(false);
   };
 
   const handleVerify = async (e) => {
     e.preventDefault();
-    setError('');
-    if (otp.length !== 6) { setError('Please enter the 6-digit OTP.'); return; }
+    if (otp.length !== 6) {
+      toast.error('Enter 6-digit OTP', { description: 'Please enter the complete 6-digit OTP.', duration: 3000 });
+      return;
+    }
 
     setLoading(true);
     const verifyResult = await verifyOtp(otp);
 
     if (!verifyResult.success) {
       setLoading(false);
-      setError(verifyResult.error);
-      if (verifyResult.code === 'auth/code-expired' || verifyResult.code === 'auth/session-expired') {
-        router.push('/auth/phone');
+      setOtp('');
+      const isExpired =
+        verifyResult.code === 'auth/code-expired' ||
+        verifyResult.code === 'auth/session-expired';
+      if (isExpired) {
+        setSessionExpired(true);
+        toast.error('OTP expired', {
+          description: 'Your OTP has expired. Please request a new one.',
+          duration: 5000,
+        });
+      } else {
+        toast.error('Invalid OTP', {
+          description: verifyResult.error || 'The OTP you entered is incorrect. Please try again.',
+          duration: 4000,
+        });
       }
       return;
     }
@@ -57,13 +72,20 @@ export default function VerifyOtpPage() {
       router.push('/crew/setup');
     } catch (err) {
       setLoading(false);
-      setError(err.message || 'Failed to load profile. Please try again.');
+      toast.error('Profile error', {
+        description: err.message || 'Failed to load profile. Please try again.',
+        duration: 4000,
+      });
     }
   };
 
   const handleResend = async () => {
     setResendTimer(60);
-    setError('OTP resent to your phone number');
+    setSessionExpired(false);
+    toast.success('OTP resent', {
+      description: 'A new OTP has been sent to your phone number.',
+      duration: 3000,
+    });
   };
 
   return (
@@ -99,13 +121,15 @@ export default function VerifyOtpPage() {
 
             </div>
 
-            {error && (
-              <div className={`flex gap-2.5 p-3.5 rounded-xl text-sm border ${
-                error.includes('resent')
-                  ? 'bg-green-500/10 border-green-500/20 text-green-400'
-                  : 'bg-red-500/10 border-red-500/20 text-red-400'
-              }`}>
-                {error}
+            {sessionExpired && (
+              <div className="flex flex-col gap-2 p-3.5 rounded-xl text-sm border bg-red-500/10 border-red-500/20 text-red-400">
+                <span>Your OTP has expired. Please go back and request a new one.</span>
+                <Link
+                  href="/auth/phone"
+                  className="inline-flex items-center gap-1 text-xs text-amber-400 underline font-medium mt-1"
+                >
+                  ← Request a new OTP
+                </Link>
               </div>
             )}
 
