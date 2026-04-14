@@ -1,14 +1,12 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { auth, setupRecaptchaVerifier } from '@/lib/firebase';
-import { signInWithPhoneNumber } from 'firebase/auth';
+import { sendOtp, verifyOtp, fetchUserRole, isValidPhone } from '@/lib/auth';
 
-// Popular country codes for dropdown
 const COUNTRY_CODES = [
   { code: '+91', country: 'India', flag: '🇮🇳' },
-  { code: '+1', country: 'USA / Canada', flag: '🇺🇸' },
+  { code: '+1',  country: 'USA / Canada', flag: '🇺🇸' },
   { code: '+44', country: 'UK', flag: '🇬🇧' },
   { code: '+971', country: 'UAE', flag: '🇦🇪' },
   { code: '+65', country: 'Singapore', flag: '🇸🇬' },
@@ -23,127 +21,115 @@ export default function LoginPage() {
   const router = useRouter();
   const [step, setStep] = useState('phone'); // 'phone' | 'otp'
   const [countryCode, setCountryCode] = useState('+91');
-  const [phoneNumber, setPhoneNumber] = useState('');
+  const [phone, setPhone] = useState('');
   const [otp, setOtp] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [confirmationRef, setConfirmationRef] = useState(null);
-  const recaptchaContainerRef = useRef(null);
+  const [info, setInfo] = useState('');
 
-  // Cleanup recaptcha on unmount
+  // Clean up reCAPTCHA on unmount
   useEffect(() => {
     return () => {
-      if (window._recaptchaVerifier) {
-        try { window._recaptchaVerifier.clear(); } catch (_) {}
-        window._recaptchaVerifier = null;
-      }
+      try {
+        if (typeof window !== 'undefined' && window._recaptchaVerifier) {
+          window._recaptchaVerifier.clear();
+          window._recaptchaVerifier = null;
+        }
+      } catch (_) {}
     };
   }, []);
 
-  const sendOtp = async (e) => {
+  const fullPhone = `${countryCode}${phone.replace(/\D/g, '')}`;
+
+  // ── Step 1: Send OTP ────────────────────────────────────────────────────────
+  const handleSendOtp = async (e) => {
     e.preventDefault();
     setError('');
+    setInfo('');
 
-    const digits = phoneNumber.replace(/\D/g, '');
+    const digits = phone.replace(/\D/g, '');
     if (digits.length < 7) {
-      setError('Please enter a valid phone number.');
+      setError('Please enter a valid phone number (without country code).');
       return;
     }
 
-    const fullPhone = `${countryCode}${digits}`;
+    if (!isValidPhone(fullPhone)) {
+      setError('Invalid phone number. Check country code and digits.');
+      return;
+    }
+
+    setLoading(true);
+    const result = await sendOtp(fullPhone);
+    setLoading(false);
+
+    if (!result.success) {
+      setError(result.error);
+      return;
+    }
+
+    setStep('otp');
+    setInfo(`OTP sent to ${countryCode} ${digits}`);
+  };
+
+  // ── Step 2: Verify OTP → role redirect ─────────────────────────────────────
+  const handleVerifyOtp = async (e) => {
+    e.preventDefault();
+    setError('');
+
+    if (otp.length < 6) {
+      setError('Please enter the 6-digit OTP.');
+      return;
+    }
+
     setLoading(true);
 
-    try {
-      const verifier = setupRecaptchaVerifier('recaptcha-container');
-      if (!verifier) throw new Error('reCAPTCHA setup failed. Please refresh.');
+    const verifyResult = await verifyOtp(otp);
 
-      const result = await signInWithPhoneNumber(auth, fullPhone, verifier);
-      // Store in memory (not state, to avoid serialization issues)
-      window._confirmationResult = result;
-      setConfirmationRef(true); // just a flag
-      setStep('otp');
-    } catch (err) {
-      console.error('[Login] sendOtp error:', err);
-      setError(err.message || 'Failed to send OTP. Please try again.');
-      // Clear verifier on error
-      if (window._recaptchaVerifier) {
-        try { window._recaptchaVerifier.clear(); } catch (_) {}
-        window._recaptchaVerifier = null;
-      }
-    } finally {
+    if (!verifyResult.success) {
       setLoading(false);
+      setError(verifyResult.error);
+      // Expired — go back to phone step
+      if (
+        verifyResult.code === 'auth/code-expired' ||
+        verifyResult.code === 'auth/session-expired'
+      ) {
+        setStep('phone');
+        setOtp('');
+      }
+      return;
+    }
+
+    // OTP verified — fetch role
+    try {
+      const userData = await fetchUserRole(verifyResult.user.phoneNumber);
+
+      if (userData.role === 'admin' || userData.role === 'super_admin') {
+        router.replace('/admin');
+      } else if (userData.role === 'crew') {
+        router.replace(userData.approved ? '/crew/dashboard' : '/crew/verify');
+      } else if (userData.role === 'employer') {
+        router.replace(userData.approved ? '/employer/dashboard' : '/crew/verify');
+      } else {
+        // No WhatsApp onboarding done yet
+        router.replace('/crew/setup');
+      }
+    } catch (err) {
+      setLoading(false);
+      setError(err.message || 'Failed to load profile. Please try again.');
     }
   };
 
-  const verifyOtp = async (e) => {
-    e.preventDefault();
+  const handleBack = () => {
+    setStep('phone');
+    setOtp('');
     setError('');
-
-    if (otp.length < 4) {
-      setError('Please enter the OTP.');
-      return;
-    }
-
-    const confirmation = window._confirmationResult;
-    if (!confirmation) {
-      setError('Session expired. Please request a new OTP.');
-      setStep('phone');
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const userCredential = await confirmation.confirm(otp);
-      const phone = userCredential.user.phoneNumber;
-
-      // Initialize user role via server-side API
-      const res = await fetch('/api/auth/initialize', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone }),
-      });
-      const data = await res.json();
-
-      window._confirmationResult = null;
-
-      // Redirect based on role
-      if (data.role === 'admin' || data.role === 'super_admin') {
-        router.push('/admin');
-      } else if (data.role === 'crew') {
-        if (data.approved) {
-          router.push('/crew/dashboard');
-        } else {
-          router.push('/crew/verify'); // pending approval
-        }
-      } else if (data.role === 'employer') {
-        if (data.approved) {
-          router.push('/employer/dashboard');
-        } else {
-          router.push('/crew/verify'); // pending approval (reuse page)
-        }
-      } else {
-        // No role — user hasn't completed WhatsApp onboarding
-        router.push('/crew/setup');
-      }
-    } catch (err) {
-      console.error('[Login] verifyOtp error:', err);
-      if (err.code === 'auth/invalid-verification-code') {
-        setError('Incorrect OTP. Please try again.');
-      } else if (err.code === 'auth/code-expired') {
-        setError('OTP expired. Please request a new one.');
-        setStep('phone');
-      } else {
-        setError(err.message || 'Verification failed. Please try again.');
-      }
-    } finally {
-      setLoading(false);
-    }
+    setInfo('');
   };
 
   return (
     <div className="min-h-screen bg-[#0D0D0D] flex items-center justify-center px-4">
-      {/* Invisible reCAPTCHA container */}
-      <div id="recaptcha-container" ref={recaptchaContainerRef} />
+      {/* Invisible reCAPTCHA mount point — must be in DOM */}
+      <div id="recaptcha-container" />
 
       <div className="w-full max-w-md">
         {/* Logo */}
@@ -158,86 +144,73 @@ export default function LoginPage() {
         </div>
 
         <div className="bg-[#1A1A1A] border border-zinc-800 rounded-2xl p-8">
-          {step === 'phone' ? (
+
+          {/* ── Phone step ── */}
+          {step === 'phone' && (
             <>
               <h1 className="text-white text-2xl font-semibold mb-1">Sign in</h1>
               <p className="text-zinc-400 text-sm mb-6">
                 Enter your phone number to receive an OTP
               </p>
 
-              <form onSubmit={sendOtp} className="space-y-4">
-                {/* Phone input — country code + number separated */}
-                <div className="space-y-2">
-                  <div>
-                    <label className="block text-zinc-400 text-xs font-medium mb-1.5 uppercase tracking-wide">
-                      Country Code
-                    </label>
-                    <select
-                      value={countryCode}
-                      onChange={(e) => setCountryCode(e.target.value)}
-                      className="w-full bg-[#242424] border border-zinc-700 text-white rounded-xl px-3 py-3 text-sm focus:outline-none focus:border-[#F5A623]"
-                    >
-                      {COUNTRY_CODES.map((c) => (
-                        <option key={c.code} value={c.code}>
-                          {c.flag} {c.code} — {c.country}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-zinc-400 text-xs font-medium mb-1.5 uppercase tracking-wide">
-                      Phone Number
-                    </label>
-                    <input
-                      type="tel"
-                      value={phoneNumber}
-                      onChange={(e) => setPhoneNumber(e.target.value.replace(/\D/g, '').slice(0, 12))}
-                      placeholder="98765 43210"
-                      className="w-full bg-[#242424] border border-zinc-700 text-white rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-[#F5A623] placeholder-zinc-600"
-                      autoFocus
-                      inputMode="numeric"
-                    />
-                    <p className="text-zinc-600 text-xs mt-1.5">Enter without leading 0 or country code</p>
-                  </div>
+              <form onSubmit={handleSendOtp} className="space-y-4">
+                <div>
+                  <label className="block text-zinc-400 text-xs font-medium mb-1.5 uppercase tracking-wide">
+                    Country Code
+                  </label>
+                  <select
+                    value={countryCode}
+                    onChange={(e) => setCountryCode(e.target.value)}
+                    className="w-full bg-[#242424] border border-zinc-700 text-white rounded-xl px-3 py-3 text-sm focus:outline-none focus:border-[#F5A623]"
+                  >
+                    {COUNTRY_CODES.map((c) => (
+                      <option key={c.code} value={c.code}>
+                        {c.flag} {c.code} — {c.country}
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
-                {error && (
-                  <div className="text-red-400 text-sm bg-red-900/20 border border-red-800 rounded-lg px-3 py-2 space-y-1">
-                    <p>{error}</p>
-                    {(error.includes('Blaze') || error.includes('test phone')) && (
-                      <a
-                        href="https://console.firebase.google.com/project/_/authentication/providers"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="block text-xs text-red-300 underline"
-                      >
-                        Open Firebase Console → Authentication
-                      </a>
-                    )}
-                  </div>
-                )}
+                <div>
+                  <label className="block text-zinc-400 text-xs font-medium mb-1.5 uppercase tracking-wide">
+                    Phone Number
+                  </label>
+                  <input
+                    type="tel"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 12))}
+                    placeholder="98765 43210"
+                    className="w-full bg-[#242424] border border-zinc-700 text-white rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-[#F5A623] placeholder-zinc-600"
+                    autoFocus
+                    inputMode="numeric"
+                    autoComplete="tel"
+                  />
+                  <p className="text-zinc-600 text-xs mt-1.5">Without leading 0 or country code</p>
+                </div>
+
+                {error && <ErrorBox message={error} />}
 
                 <button
                   type="submit"
                   disabled={loading}
                   className="w-full bg-[#F5A623] hover:bg-[#E8960F] disabled:opacity-50 disabled:cursor-not-allowed text-black font-semibold rounded-xl py-3 text-sm transition-colors"
                 >
-                  {loading ? 'Sending OTP...' : 'Send OTP →'}
+                  {loading ? <Spinner text="Sending OTP…" /> : 'Send OTP →'}
                 </button>
               </form>
 
               <p className="text-zinc-500 text-xs text-center mt-6">
                 Don&#39;t have an account?{' '}
-                <span className="text-[#F5A623]">
-                  Message us on WhatsApp to register
-                </span>
+                <span className="text-[#F5A623]">Message us on WhatsApp to register</span>
               </p>
             </>
-          ) : (
+          )}
+
+          {/* ── OTP step ── */}
+          {step === 'otp' && (
             <>
               <button
-                onClick={() => { setStep('phone'); setOtp(''); setError(''); }}
+                onClick={handleBack}
                 className="text-zinc-400 hover:text-white text-sm mb-4 flex items-center gap-1 transition-colors"
               >
                 ← Back
@@ -245,13 +218,10 @@ export default function LoginPage() {
 
               <h1 className="text-white text-2xl font-semibold mb-1">Enter OTP</h1>
               <p className="text-zinc-400 text-sm mb-6">
-                We sent a 6-digit code to{' '}
-                <span className="text-white font-medium">
-                  {countryCode} {phoneNumber}
-                </span>
+                {info || `Code sent to ${countryCode} ${phone}`}
               </p>
 
-              <form onSubmit={verifyOtp} className="space-y-4">
+              <form onSubmit={handleVerifyOtp} className="space-y-4">
                 <div>
                   <label className="block text-zinc-300 text-sm font-medium mb-2">
                     Verification Code
@@ -265,34 +235,68 @@ export default function LoginPage() {
                     autoFocus
                     inputMode="numeric"
                     maxLength={6}
+                    autoComplete="one-time-code"
                   />
                 </div>
 
-                {error && (
-                  <p className="text-red-400 text-sm bg-red-900/20 border border-red-800 rounded-lg px-3 py-2">
-                    {error}
-                  </p>
-                )}
+                {error && <ErrorBox message={error} />}
 
                 <button
                   type="submit"
-                  disabled={loading || otp.length < 4}
+                  disabled={loading || otp.length < 6}
                   className="w-full bg-[#F5A623] hover:bg-[#E8960F] disabled:opacity-50 disabled:cursor-not-allowed text-black font-semibold rounded-xl py-3 text-sm transition-colors"
                 >
-                  {loading ? 'Verifying...' : 'Verify & Sign In →'}
+                  {loading ? <Spinner text="Verifying…" /> : 'Verify & Sign In →'}
                 </button>
               </form>
 
               <button
-                onClick={() => { setStep('phone'); setOtp(''); setError(''); }}
-                className="w-full text-zinc-500 hover:text-zinc-300 text-xs mt-4 transition-colors"
+                onClick={handleBack}
+                disabled={loading}
+                className="w-full text-zinc-500 hover:text-zinc-300 text-xs mt-4 transition-colors disabled:opacity-50"
               >
                 Resend OTP
               </button>
             </>
           )}
+
         </div>
       </div>
     </div>
+  );
+}
+
+// ─── Sub-components ───────────────────────────────────────────────────────────
+
+function ErrorBox({ message }) {
+  const isSetupIssue =
+    message.includes('Blaze') || message.includes('test phone') || message.includes('not enabled');
+
+  return (
+    <div className="text-red-400 text-sm bg-red-900/20 border border-red-800 rounded-lg px-3 py-2 space-y-1">
+      <p>{message}</p>
+      {isSetupIssue && (
+        <a
+          href="https://console.firebase.google.com/project/_/authentication/providers"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="block text-xs text-red-300 underline"
+        >
+          Open Firebase Console → Authentication
+        </a>
+      )}
+    </div>
+  );
+}
+
+function Spinner({ text }) {
+  return (
+    <span className="flex items-center justify-center gap-2">
+      <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
+        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+      </svg>
+      {text}
+    </span>
   );
 }

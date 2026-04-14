@@ -7,12 +7,13 @@
 import { NextResponse } from 'next/server';
 import { handleMessage } from '@/lib/conversation';
 import { sendConversationMessage } from '@/lib/whatsapp';
+import logger from '@/lib/logger';
 
 // GET: MSG91 verification
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
   const challenge = searchParams.get('hub.challenge');
-  console.log('[Webhook] GET verify hit | challenge:', challenge);
+  logger.log('[Webhook] GET verify hit | challenge:', challenge);
   if (challenge) {
     return new NextResponse(challenge, { status: 200 });
   }
@@ -21,22 +22,22 @@ export async function GET(request) {
 
 // POST: Incoming message
 export async function POST(request) {
-  console.log('WEBHOOK HIT');
+  logger.log('WEBHOOK HIT');
 
   let body;
   try {
     body = await request.json();
   } catch (parseErr) {
-    console.error('[Webhook] Failed to parse JSON body:', parseErr.message);
+    logger.error('[Webhook] Failed to parse JSON body:', parseErr.message);
     return NextResponse.json({ status: 'ok' }, { status: 200 });
   }
 
-  console.log('Incoming payload:', JSON.stringify(body, null, 2));
+  logger.log('Incoming payload:', JSON.stringify(body, null, 2));
 
   try {
     const payload = body?.payload;
     if (!payload) {
-      console.warn('[Webhook] No payload in body - ignoring');
+      logger.warn('[Webhook] No payload in body - ignoring');
       return NextResponse.json({ status: 'ok' }, { status: 200 });
     }
 
@@ -52,11 +53,11 @@ export async function POST(request) {
       null;
 
     if (!from) {
-      console.warn('[Webhook] No "from" found anywhere in payload - ignoring. Full body:', JSON.stringify(body));
+      logger.warn('[Webhook] No "from" found anywhere in payload - ignoring. Full body:', JSON.stringify(body));
       return NextResponse.json({ status: 'ok' }, { status: 200 });
     }
 
-    console.log('[Webhook] Message from:', from, '| type:', payload.type);
+    logger.log('[Webhook] Message from:', from, '| type:', payload.type);
 
     let messageText = '';
     const msgType = payload.type;
@@ -88,13 +89,13 @@ export async function POST(request) {
         messageText = innerPayload?.id || String(innerPayload || '');
       }
     } else {
-      console.log('[Webhook] Unsupported message type:', msgType, '- sending fallback');
+      logger.log('[Webhook] Unsupported message type:', msgType, '- sending fallback');
     }
 
-    console.log('[Webhook] Extracted messageText:', JSON.stringify(messageText));
+    logger.log('[Webhook] Extracted messageText:', JSON.stringify(messageText));
 
     if (!messageText) {
-      console.log('[Webhook] Empty messageText - sending re-prompt to', from);
+      logger.log('[Webhook] Empty messageText - sending re-prompt to', from);
       await sendConversationMessage(from, {
         type: 'text',
         text: "Sorry, I didn't understand that. Type Hi to get started!",
@@ -102,23 +103,23 @@ export async function POST(request) {
       return NextResponse.json({ status: 'ok' }, { status: 200 });
     }
 
-    console.log('[Webhook] Routing to conversation engine | userId:', from);
+    logger.log('[Webhook] Routing to conversation engine | userId:', from);
     let result = await handleMessage({ userId: from, message: messageText });
 
-    console.log('Conversation result:', JSON.stringify(result, null, 2));
+    logger.log('Conversation result:', JSON.stringify(result, null, 2));
 
     if (!result || !result.text) {
-      console.warn('[Webhook] Conversation result missing text - using fallback');
+      logger.warn('[Webhook] Conversation result missing text - using fallback');
       result = { type: 'text', text: 'Something went wrong. Please try again.' };
     }
 
     await sendConversationMessage(from, result);
-    console.log('Reply sent to:', from);
+    logger.log('Reply sent to:', from);
 
     return NextResponse.json({ status: 'ok' }, { status: 200 });
 
   } catch (error) {
-    console.error('[Webhook] Unhandled error:', error);
+    logger.error('[Webhook] Unhandled error:', error);
     return NextResponse.json({ status: 'ok' }, { status: 200 });
   }
 }

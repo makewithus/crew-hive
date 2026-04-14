@@ -2,8 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { getStoredConfirmationResult, clearStoredConfirmationResult } from '@/lib/firebase';
-import { getUser } from '@/lib/firestore';
+import { verifyOtp, fetchUserRole } from '@/lib/auth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import Link from 'next/link';
@@ -12,18 +11,11 @@ export default function VerifyOtpPage() {
   const [otp, setOtp] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [confirmationResult, setConfirmationResult] = useState(null);
   const [resendTimer, setResendTimer] = useState(0);
   const router = useRouter();
 
-  useEffect(() => {
-    const stored = getStoredConfirmationResult();
-    if (!stored) {
-      router.push('/auth/phone');
-      return;
-    }
-    setConfirmationResult(stored);
-  }, [router]);
+  // confirmationResult lives in lib/auth module scope — no local state needed
+  useEffect(() => { /* mount guard — auth/phone must be visited first */ }, []);
 
   useEffect(() => {
     let interval;
@@ -41,30 +33,31 @@ export default function VerifyOtpPage() {
   const handleVerify = async (e) => {
     e.preventDefault();
     setError('');
-    if (otp.length !== 6) { setError('Please enter a 6-digit OTP'); return; }
-    if (!confirmationResult) { setError('Session expired.'); router.push('/auth/phone'); return; }
+    if (otp.length !== 6) { setError('Please enter the 6-digit OTP.'); return; }
+
     setLoading(true);
-    try {
-      const result = await confirmationResult.confirm(otp);
-      const uid = result.user.uid;
-      clearStoredConfirmationResult();
-      const userResult = await getUser(uid);
-      if (!userResult.success || !userResult.data?.role) {
-        router.push('/auth/role-selection');
-        return;
-      }
-      const { role, approved } = userResult.data;
-      if (role === 'super_admin') { router.push('/super-admin/dashboard'); return; }
-      if (role === 'admin') { router.push('/admin/dashboard'); return; }
-      if (approved === false) { router.push('/pending-approval'); return; }
-      if (role === 'crew') router.push('/crew/dashboard');
-      else if (role === 'organizer') router.push('/organizer/dashboard');
-      else router.push('/auth/role-selection');
-    } catch (err) {
-      console.error('[v0] OTP error:', err);
-      setError('Invalid OTP. Please try again.');
-    } finally {
+    const verifyResult = await verifyOtp(otp);
+
+    if (!verifyResult.success) {
       setLoading(false);
+      setError(verifyResult.error);
+      if (verifyResult.code === 'auth/code-expired' || verifyResult.code === 'auth/session-expired') {
+        router.push('/auth/phone');
+      }
+      return;
+    }
+
+    try {
+      const userData = await fetchUserRole(verifyResult.user.phoneNumber);
+      const { role, approved } = userData;
+      if (role === 'super_admin') { router.push('/super-admin/dashboard'); return; }
+      if (role === 'admin') { router.push('/admin'); return; }
+      if (role === 'crew') { router.push(approved ? '/crew/dashboard' : '/crew/verify'); return; }
+      if (role === 'employer') { router.push(approved ? '/employer/dashboard' : '/crew/verify'); return; }
+      router.push('/crew/setup');
+    } catch (err) {
+      setLoading(false);
+      setError(err.message || 'Failed to load profile. Please try again.');
     }
   };
 
@@ -103,9 +96,7 @@ export default function VerifyOtpPage() {
                 maxLength="6"
                 className="w-full text-center text-3xl tracking-[0.6em] bg-muted border border-border text-foreground h-16 rounded-xl outline-none focus:border-primary/50 transition-colors font-bold"
               />
-              <p className="text-xs text-muted-foreground mt-2 text-center">
-                Use <span className="text-primary font-semibold">123456</span> for testing
-              </p>
+
             </div>
 
             {error && (

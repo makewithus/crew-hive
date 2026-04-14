@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { setupRecaptchaVerifier, signInWithPhone } from '@/lib/firebase';
+import { sendOtp } from '@/lib/auth';
 import Link from 'next/link';
 
 const COUNTRY_CODES = [
@@ -42,23 +42,13 @@ export default function PhoneAuthPage() {
     }
 
     setLoading(true);
+    const result = await sendOtp(`+${countryCode}${digits}`);
+    setLoading(false);
 
-    try {
-      const appVerifier = setupRecaptchaVerifier('recaptcha-container');
-      if (!appVerifier) throw new Error('Failed to setup reCAPTCHA');
-
-      const fullPhone = `+${countryCode}${digits}`;
-      const result = await signInWithPhone(fullPhone, appVerifier);
-      if (result.success) {
-        router.push('/auth/verify-otp');
-      } else {
-        setError(result.error || 'Failed to send OTP');
-      }
-    } catch (err) {
-      console.error('[auth/phone] Error:', err);
-      setError(err.message || 'An error occurred. Please try again.');
-    } finally {
-      setLoading(false);
+    if (result.success) {
+      router.push('/auth/verify-otp');
+    } else {
+      setError(result.error || 'Failed to send OTP. Please try again.');
     }
   };
 
