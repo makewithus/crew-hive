@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { getCrewProfile, createBooking, getOrganizerProfile } from '@/lib/firestore';
-import { sendBookingNotificationToCrew } from '@/lib/conversation';
+import { sendBookingNotificationToCrew } from '@/lib/booking-notify';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import Header from '@/components/Header';
