@@ -60,7 +60,8 @@ export async function POST(request) {
     logger.log('[Webhook] Message from:', from, '| type:', payload.type);
 
     let messageText = '';
-    const msgType = payload.type;
+    // If MSG91 doesn't resolve {{type}}, default to 'text'
+    const msgType = payload.type || 'text';
     const innerPayload = payload.payload;
 
     // Helper: MSG91 sometimes double-encodes text as a JSON string e.g. '{"text":"Hi"}'
