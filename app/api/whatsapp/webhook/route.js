@@ -90,10 +90,26 @@ export async function POST(request) {
       '';
   } else if (msgType === 'interactive') {
     const iType = innerPayload?.type;
-    messageText =
-      (iType === 'button_reply' || iType === 'list_reply')
-        ? (innerPayload?.id || innerPayload?.title || '')
-        : (innerPayload?.id || String(innerPayload || ''));
+    if (iType === 'list_reply') {
+      // MSG91 nests list selection under innerPayload.list_reply
+      messageText =
+        innerPayload?.list_reply?.id ||
+        innerPayload?.list_reply?.title ||
+        innerPayload?.id ||
+        innerPayload?.title ||
+        '';
+    } else if (iType === 'button_reply') {
+      // MSG91 nests button tap under innerPayload.button_reply
+      messageText =
+        innerPayload?.button_reply?.id ||
+        innerPayload?.button_reply?.title ||
+        innerPayload?.id ||
+        innerPayload?.title ||
+        '';
+    } else {
+      messageText = innerPayload?.id || innerPayload?.title || String(innerPayload || '');
+    }
+    logger.log('[Webhook] interactive iType:', iType, '| extracted messageText:', messageText, '| innerPayload:', JSON.stringify(innerPayload));
   }
 
   logger.log('[Webhook] from:', from, '| type:', msgType, '| text:', JSON.stringify(messageText));
