@@ -60,7 +60,7 @@ export default function LoginPage() {
       });
       const checkData = await checkRes.json();
 
-      if (!checkData.exists && checkData.role !== 'admin' && checkData.role !== 'super_admin') {
+      if (!checkData.exists && checkData.role !== 'super_admin') {
         setLoading(false);
         showToast('error', 'No profile found for this number. Please register via WhatsApp first.');
         return;
@@ -97,9 +97,13 @@ export default function LoginPage() {
     try {
       const userData = await fetchUserRole(verifyResult.user.phoneNumber);
       if (userData.role === 'super_admin') { router.replace('/super-admin/dashboard'); }
-      else if (userData.role === 'admin') { router.replace('/admin/dashboard'); }
       else if (userData.role === 'crew') {
-        router.replace(userData.approved ? '/crew/dashboard' : '/pending-approval');
+        if (!userData.approved) {
+          setLoading(false);
+          showToast('error', "Your profile is pending approval. You'll be notified on WhatsApp once approved.");
+          return;
+        }
+        router.replace('/crew/dashboard');
       } else if (userData.role === 'organizer' || userData.role === 'employer') {
         router.replace('/organizer/dashboard');
       } else {

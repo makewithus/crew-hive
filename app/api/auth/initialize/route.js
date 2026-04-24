@@ -30,29 +30,19 @@ export async function POST(request) {
     const id = phoneToDocId(phone);
     const adminIds = getAdminPhones();
     const isSuperAdmin = SUPER_ADMIN_PHONE ? id === SUPER_ADMIN_PHONE : adminIds[0] === id;
-    const isAdmin = !isSuperAdmin && adminIds.includes(id);
 
     const userRef = doc(db, 'users', id);
     const snap = await getDoc(userRef);
     const exists = snap.exists();
     const userData = exists ? snap.data() : null;
 
-    // Super-admin
+    // Super-admin — always allowed, don't need WhatsApp registration
     if (isSuperAdmin) {
       if (!checkOnly) {
         const ts = new Date().toISOString();
         await setDoc(userRef, { phone: `+${id}`, role: 'super_admin', approved: true, ...(exists ? { updatedAt: ts } : { createdAt: ts, updatedAt: ts }) }, { merge: true });
       }
       return NextResponse.json({ role: 'super_admin', approved: true, exists: true, isNew: !exists });
-    }
-
-    // Admin
-    if (isAdmin) {
-      if (!checkOnly) {
-        const ts = new Date().toISOString();
-        await setDoc(userRef, { phone: `+${id}`, role: 'admin', approved: true, ...(exists ? { updatedAt: ts } : { createdAt: ts, updatedAt: ts }) }, { merge: true });
-      }
-      return NextResponse.json({ role: 'admin', approved: true, exists: true, isNew: !exists });
     }
 
     // checkOnly — just return what we know without creating anything
