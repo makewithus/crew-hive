@@ -10,6 +10,15 @@ const AuthContext = createContext(null);
 // Firestore doc ID = phone digits only
 const phoneToDocId = (phone) => String(phone || '').replace(/\D/g, '');
 
+// Check client-side if phone is the super admin (safe — admin phone is not a secret)
+const isSuperAdminPhone = (phone) => {
+  if (!phone) return false;
+  const id = phoneToDocId(phone);
+  const adminRaw = process.env.NEXT_PUBLIC_ADMIN_PHONES || '';
+  const adminIds = adminRaw.split(',').map((p) => phoneToDocId(p.trim())).filter(Boolean);
+  return adminIds.length > 0 && adminIds[0] === id;
+};
+
 export const AuthProvider = ({ children }) => {
   const [currentUser, setCurrentUser] = useState(null);
   const [userRole, setUserRole] = useState(null);
@@ -28,15 +37,21 @@ export const AuthProvider = ({ children }) => {
           setUserPhone(phone);
 
           if (phone) {
-            const userResult = await getUser(phone);
-            if (userResult.success) {
-              const data = userResult.data;
-              setUserRole(data.role ?? null);
-              const isAdmin = data.role === 'admin' || data.role === 'super_admin';
-              setUserApproved(isAdmin ? true : (data.approved ?? false));
+            // Super admin is determined by phone number (env var) — overrides Firestore role
+            if (isSuperAdminPhone(phone)) {
+              setUserRole('super_admin');
+              setUserApproved(true);
             } else {
-              setUserRole(null);
-              setUserApproved(false);
+              const userResult = await getUser(phone);
+              if (userResult.success) {
+                const data = userResult.data;
+                setUserRole(data.role ?? null);
+                const isAdmin = data.role === 'super_admin';
+                setUserApproved(isAdmin ? true : (data.approved ?? false));
+              } else {
+                setUserRole(null);
+                setUserApproved(false);
+              }
             }
           } else {
             setUserRole(null);
@@ -84,7 +99,7 @@ export const AuthProvider = ({ children }) => {
     logout,
     isAuthenticated: !!currentUser,
     isSuperAdmin: userRole === 'super_admin',
-    isAdmin: userRole === 'admin' || userRole === 'super_admin',
+    isAdmin: userRole === 'super_admin',
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
