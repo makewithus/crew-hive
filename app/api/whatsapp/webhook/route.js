@@ -70,18 +70,45 @@ export async function POST(request) {
     try { innerPayload = JSON.parse(innerPayload); } catch (_) {}
   }
 
-  // Log the raw payload so we can see exactly what MSG91 sends
-  logger.log('[Webhook] FULL payload dump:', JSON.stringify({ msgType, innerPayload, payloadKeys: payload ? Object.keys(payload) : [] }));
+  logger.log('[Webhook] RAW:', JSON.stringify({ msgType, from, innerPayload }));
 
-  const extractText = (raw) => {
+  /**
+   * Deeply extract a selection id from any payload shape MSG91 might send.
+   * Priority: interactive nested id > direct id > title > text body
+   */
+  const extractSelectionId = (obj) => {
+    if (!obj || typeof obj !== 'object') return '';
+    // list_reply / button_reply nested
+    const nested = obj.list_reply || obj.button_reply;
+    if (nested?.id) return String(nested.id).trim();
+    if (nested?.title) return String(nested.title).trim();
+    // direct id/title on obj
+    if (obj.id) return String(obj.id).trim();
+    if (obj.title) return String(obj.title).trim();
+    // list object shape: {list: {id, title}}
+    if (obj.list?.id) return String(obj.list.id).trim();
+    if (obj.button?.id) return String(obj.button.id).trim();
+    return '';
+  };
+
+  const extractPlainText = (raw) => {
     if (!raw) return '';
-    if (typeof raw === 'object') return String(raw.body || raw.text || raw.payload || '').trim();
+    if (typeof raw === 'object') {
+      // If it looks like a selection object, extract the id not the JSON
+      const sel = extractSelectionId(raw);
+      if (sel) return sel;
+      return String(raw.body || raw.text || raw.message || '').trim();
+    }
     const str = String(raw).trim();
+    // If it's a JSON string that encodes a selection (MSG91 text fallback), extract id
     try {
       const parsed = JSON.parse(str);
-      return typeof parsed === 'object'
-        ? String(parsed.text || parsed.body || parsed.payload || str).trim()
-        : String(parsed).trim();
+      if (typeof parsed === 'object') {
+        const sel = extractSelectionId(parsed);
+        if (sel) return sel;
+        return String(parsed.text || parsed.body || parsed.message || '').trim();
+      }
+      return String(parsed).trim();
     } catch {
       return str;
     }
@@ -89,28 +116,16 @@ export async function POST(request) {
 
   let messageText = '';
   if (msgType === 'interactive') {
-    // innerPayload.type tells us button_reply vs list_reply
-    // MSG91 may nest data under innerPayload.list_reply / innerPayload.button_reply
-    // OR directly under innerPayload (id/title)
-    const iType = typeof innerPayload === 'object' ? innerPayload?.type : '';
-    const nested = innerPayload?.list_reply || innerPayload?.button_reply || {};
-    messageText =
-      nested?.id ||
-      nested?.title ||
-      innerPayload?.id ||
-      innerPayload?.title ||
-      '';
-    logger.log('[Webhook] interactive | iType:', iType, '| nested:', JSON.stringify(nested), '| messageText:', messageText);
+    messageText = extractSelectionId(innerPayload);
+    logger.log('[Webhook] interactive extracted:', messageText);
   }
-
-  // Fallback: try text extraction from every known field if interactive gave nothing
   if (!messageText) {
     messageText =
-      extractText(innerPayload?.text) ||
-      extractText(innerPayload?.payload) ||
-      extractText(innerPayload) ||
-      extractText(payload?.text) ||
-      extractText(payload?.message) ||
+      extractPlainText(innerPayload?.text) ||
+      extractPlainText(innerPayload?.payload) ||
+      extractPlainText(innerPayload) ||
+      extractPlainText(payload?.text) ||
+      extractPlainText(payload?.message) ||
       '';
   }
 
