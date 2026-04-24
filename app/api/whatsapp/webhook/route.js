@@ -92,7 +92,11 @@ export async function POST(request) {
     return NextResponse.json({ status: 'ok' }, { status: 200 });
   }
 
-  // ── Dedup: msgId only — content dedup causes false drops ────────────────
+  // ── Dedup: atomic check-and-set prevents MSG91 retry duplicates ──────────
+  // MSG91 fires the webhook 2-3x for the same message. We use two layers:
+  //   1. msgId (when available) — exact identity check
+  //   2. Atomic content fingerprint (userId + text, 5-second bucket) — catches
+  //      retries when no msgId is supplied (interactive button taps)
   const msgId =
     body?.message_id ||
     body?.id ||
@@ -100,18 +104,36 @@ export async function POST(request) {
     payload?.msgId ||
     null;
 
-  if (msgId) {
-    try {
-      const dedupRef = adminDb().collection('_webhook_dedup').doc(`id_${msgId}`);
-      const snap = await dedupRef.get();
+  try {
+    const db = adminDb();
+
+    // Layer 1: msgId
+    if (msgId) {
+      const msgIdRef = db.collection('_webhook_dedup').doc(`id_${msgId}`);
+      const snap = await msgIdRef.get();
       if (snap.exists) {
-        logger.log('[Webhook] Duplicate msgId — skipping:', msgId);
+        logger.log('[Webhook] Dup msgId — skip:', msgId);
         return NextResponse.json({ status: 'ok' }, { status: 200 });
       }
-      dedupRef.set({ ts: Date.now(), from }).catch(() => {});
-    } catch (e) {
-      logger.warn('[Webhook] Dedup error (non-critical):', e.message);
+      msgIdRef.set({ ts: Date.now(), from }).catch(() => {});
     }
+
+    // Layer 2: content fingerprint (atomic transaction — only one retry wins)
+    const bucket = Math.floor(Date.now() / 5000); // 5-second window
+    const fpKey = `fp_${String(from).replace(/\D/g, '')}_${Buffer.from(messageText).toString('base64').slice(0, 40)}_${bucket}`;
+    const fpRef = db.collection('_webhook_dedup').doc(fpKey);
+    const isDup = await db.runTransaction(async (tx) => {
+      const snap = await tx.get(fpRef);
+      if (snap.exists) return true;
+      tx.set(fpRef, { ts: Date.now(), from, text: messageText });
+      return false;
+    });
+    if (isDup) {
+      logger.log('[Webhook] Dup fingerprint — skip | from:', from, '| text:', messageText);
+      return NextResponse.json({ status: 'ok' }, { status: 200 });
+    }
+  } catch (e) {
+    logger.warn('[Webhook] Dedup error (continuing):', e.message);
   }
 
   // ── Return 200 immediately — process runs after response is sent ──────────
