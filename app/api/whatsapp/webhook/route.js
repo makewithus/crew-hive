@@ -3,14 +3,13 @@
  * GET  /api/whatsapp/webhook  — Verification handshake
  * POST /api/whatsapp/webhook  — Incoming message handler
  *
- * Uses Next.js `after()` to return 200 instantly and process in background.
- * Firestore dedup prevents MSG91 retries from sending duplicate messages.
+ * Processes synchronously: send reply first, then return 200.
+ * Dedup is handled entirely inside conversation.js (lastMsgNorm + atomicStepTransition).
  */
 
-import { NextResponse, after } from 'next/server';
+import { NextResponse } from 'next/server';
 import { handleMessage } from '@/lib/conversation';
 import { sendConversationMessage } from '@/lib/whatsapp';
-import { adminDb } from '@/lib/firebase-admin';
 import logger from '@/lib/logger';
 
 export const maxDuration = 30;
@@ -54,14 +53,12 @@ export async function POST(request) {
   // ── Ignore delivery receipts / status events (from = our own number) ──────
   const ownNumber = String(process.env.MSG91_WHATSAPP_NUMBER || '').replace(/\D/g, '');
   if (ownNumber && String(from).replace(/\D/g, '') === ownNumber) {
-    logger.log('[Webhook] Ignoring outbound status event from own number:', from);
     return NextResponse.json({ status: 'ok' }, { status: 200 });
   }
 
-  // ── Also ignore explicit status/event types ───────────────────────────────
+  // ── Ignore explicit status/event types ───────────────────────────────────
   const eventType = body?.event || payload?.event || body?.type || '';
   if (/sent|delivered|read|failed|status/i.test(eventType)) {
-    logger.log('[Webhook] Ignoring status event type:', eventType);
     return NextResponse.json({ status: 'ok' }, { status: 200 });
   }
 
@@ -106,85 +103,34 @@ export async function POST(request) {
     return NextResponse.json({ status: 'ok' }, { status: 200 });
   }
 
-  // ── Dedup: atomic check-and-set prevents MSG91 retry duplicates ──────────
-  // MSG91 fires the webhook 2-3x for the same message. We use two layers:
-  //   1. msgId (when available) — exact identity check
-  //   2. Atomic content fingerprint (userId + text, 5-second bucket) — catches
-  //      retries when no msgId is supplied (interactive button taps)
-  const msgId =
-    body?.message_id ||
-    body?.id ||
-    payload?.id ||
-    payload?.msgId ||
-    null;
-
+  // ── Process message and send reply ────────────────────────────────────────
+  // Run synchronously so Vercel doesn't add after() scheduling overhead.
+  // Dedup is handled in handleMessage (lastMsgNorm plain-get + atomicStepTransition).
   try {
-    const db = adminDb();
+    const result = await handleMessage({ userId: from, message: messageText });
 
-    // Layer 1: msgId
-    if (msgId) {
-      const msgIdRef = db.collection('_webhook_dedup').doc(`id_${msgId}`);
-      const snap = await msgIdRef.get();
-      if (snap.exists) {
-        logger.log('[Webhook] Dup msgId — skip:', msgId);
-        return NextResponse.json({ status: 'ok' }, { status: 200 });
-      }
-      msgIdRef.set({ ts: Date.now(), from }).catch(() => {});
-    }
-
-    // Layer 2: content fingerprint (atomic transaction — only one retry wins)
-    // MSG91 retries webhooks for up to ~60s; 90-second bucket covers all retries
-    const bucket = Math.floor(Date.now() / 90000); // 90-second window
-    const fpKey = `fp_${String(from).replace(/\D/g, '')}_${Buffer.from(messageText).toString('base64').slice(0, 40)}_${bucket}`;
-    const fpRef = db.collection('_webhook_dedup').doc(fpKey);
-    const isDup = await db.runTransaction(async (tx) => {
-      const snap = await tx.get(fpRef);
-      if (snap.exists) return true;
-      tx.set(fpRef, { ts: Date.now(), from, text: messageText });
-      return false;
-    });
-    if (isDup) {
-      logger.log('[Webhook] Dup fingerprint — skip | from:', from, '| text:', messageText);
+    if (result === null) {
+      // Duplicate — conversation.js already blocked it
+      logger.log('[Webhook] Duplicate suppressed for:', from);
       return NextResponse.json({ status: 'ok' }, { status: 200 });
     }
-  } catch (e) {
-    logger.warn('[Webhook] Dedup error (continuing):', e.message);
-  }
 
-  // ── Return 200 immediately — process runs after response is sent ──────────
-  after(async () => {
-    try {
-      logger.log('[Webhook] after() processing | from:', from, '| msg:', messageText);
-      let result = await handleMessage({ userId: from, message: messageText });
-
-      // null = duplicate detected by atomicStepTransition — first call already sent the reply
-      if (result === null) {
-        logger.log('[Webhook] Duplicate step transition suppressed for:', from);
-        return;
-      }
-
-      if (!result) {
-        result = { type: 'text', text: 'Something went wrong. Please type Hi to restart.' };
-      }
-
-      // handleMessage may return an array [msg1, msg2] or a single message
-      const messages = Array.isArray(result) ? result : [result];
-      for (const msg of messages) {
-        if (!msg?.text) continue;
-        await sendConversationMessage(from, msg);
-      }
-
-      logger.log('[Webhook] Reply(s) sent to:', from, '| count:', messages.length);
-    } catch (err) {
-      logger.error('[Webhook] after() error:', err);
-      try {
-        await sendConversationMessage(from, {
-          type: 'text',
-          text: 'Something went wrong. Please type Hi to restart.',
-        });
-      } catch (_) {}
+    const messages = Array.isArray(result) ? result : [result];
+    for (const msg of messages) {
+      if (!msg?.text) continue;
+      await sendConversationMessage(from, msg);
     }
-  });
+
+    logger.log('[Webhook] Reply(s) sent to:', from, '| count:', messages.length);
+  } catch (err) {
+    logger.error('[Webhook] Processing error:', err);
+    try {
+      await sendConversationMessage(from, {
+        type: 'text',
+        text: 'Something went wrong. Please type Hi to restart.',
+      });
+    } catch (_) {}
+  }
 
   return NextResponse.json({ status: 'ok' }, { status: 200 });
 }
