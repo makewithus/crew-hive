@@ -15,7 +15,6 @@ export default function Home() {
     if (userApproved === false) { router.push('/pending-approval'); return; }
     if (userRole === 'crew') { router.push('/crew/dashboard'); return; }
     if (userRole === 'organizer') { router.push('/organizer/dashboard'); return; }
-    if (userRole === 'admin') { router.push('/admin/dashboard'); return; }
   }, [loading, currentUser, userRole, isSuperAdmin, userApproved, router]);
 
   if (loading) {
@@ -77,12 +76,12 @@ export default function Home() {
 
         <p className="text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto mb-10 leading-relaxed">
           CrewHive is a verified network for professional crew and event organizers.
-          Complete your profile via WhatsApp — once approved by our admin team, access your dashboard here.
+          Register via WhatsApp — once approved, log in to access your dashboard.
         </p>
 
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
           <Link
-            href="/auth/phone"
+            href="/login"
             className="group inline-flex items-center justify-center gap-2.5 bg-primary text-primary-foreground font-bold px-8 py-4 rounded-2xl hover:bg-primary/90 transition-all shadow-xl shadow-primary/30 text-base"
           >
             <span>Sign In with Phone</span>
@@ -90,13 +89,15 @@ export default function Home() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
             </svg>
           </Link>
-          <Link
-            href="/auth/phone"
+          <a
+            href="https://wa.me/918139002826?text=Hi"
+            target="_blank"
+            rel="noopener noreferrer"
             className="inline-flex items-center justify-center gap-2 bg-card border border-border text-foreground font-semibold px-8 py-4 rounded-2xl hover:border-primary/50 hover:bg-primary/5 transition-all text-base"
           >
             <span className="text-xl">💬</span>
-            Try WhatsApp Bot
-          </Link>
+            Register on WhatsApp
+          </a>
         </div>
       </section>
 
@@ -202,9 +203,8 @@ export default function Home() {
           <h2 className="text-xl font-bold text-foreground mb-7 text-center">Platform Hierarchy</h2>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-0">
             {[
-              { label: 'Super Admin', sub: 'Full access · Approves users', icon: '👑', active: true },
-              { label: 'Admin', sub: 'Approves crew profiles', icon: '🛡️', active: false },
-              { label: 'Organizer', sub: 'Books crew members', icon: '📋', active: false },
+              { label: 'Super Admin', sub: 'Full access · Approves crew', icon: '👑', active: true },
+              { label: 'Organizer', sub: 'Books crew for productions', icon: '📋', active: false },
               { label: 'Crew', sub: 'Gets hired for jobs', icon: '🎬', active: false },
             ].map((role, i, arr) => (
               <div key={i} className="flex items-center">

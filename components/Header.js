@@ -33,12 +33,6 @@ export const Header = () => {
         { href: '/organizer/search', label: 'Search Crew' },
       ];
     }
-    if (userRole === USER_ROLES.ADMIN) {
-      return [
-        { href: '/admin/dashboard', label: 'Dashboard' },
-        { href: '/admin/approvals', label: 'Approvals' },
-      ];
-    }
     return [];
   };
 
