@@ -81,35 +81,14 @@ export async function POST(request) {
     return NextResponse.json({ status: 'ok' }, { status: 200 });
   }
 
-  // ── Deduplication: skip if same message_id already processed ─────────────
-  const msgId =
-    body?.message_id ||
-    body?.id ||
-    payload?.id ||
-    payload?.msgId ||
-    null;
-
-  if (msgId) {
-    try {
-      const dedupRef = adminDb().collection('_webhook_dedup').doc(msgId);
-      const snap = await dedupRef.get();
-      if (snap.exists) {
-        logger.log('[Webhook] Duplicate msgId, skipping:', msgId);
-        return NextResponse.json({ status: 'ok' }, { status: 200 });
-      }
-      // Mark as processed (TTL-style: store timestamp, clean up later)
-      dedupRef.set({ processedAt: Date.now(), from }).catch(() => {});
-    } catch (_) { /* dedup failure non-critical, continue */ }
-  }
-
   // ── Extract message text ──────────────────────────────────────────────────
   const msgType = payload.type || 'text';
   const innerPayload = payload.payload;
 
   const extractText = (raw) => {
     if (!raw) return '';
-    if (typeof raw === 'object') return raw.body || raw.text || raw.payload || '';
-    const str = String(raw);
+    if (typeof raw === 'object') return raw.text || raw.body || raw.payload || '';
+    const str = String(raw).trim();
     try {
       const parsed = JSON.parse(str);
       if (typeof parsed === 'object') return parsed.text || parsed.body || parsed.payload || str;
@@ -121,7 +100,12 @@ export async function POST(request) {
 
   let messageText = '';
   if (msgType === 'text') {
-    messageText = extractText(innerPayload?.text) || extractText(innerPayload?.payload) || extractText(innerPayload) || '';
+    messageText =
+      extractText(innerPayload?.text) ||
+      extractText(innerPayload?.payload) ||
+      extractText(innerPayload) ||
+      extractText(payload?.text) ||   // some MSG91 payloads put text directly here
+      '';
   } else if (msgType === 'interactive') {
     const interactiveType = innerPayload?.type;
     if (interactiveType === 'button_reply') {
@@ -133,11 +117,41 @@ export async function POST(request) {
     }
   }
 
+  // Last-resort: if still empty, try the raw payload as a string
+  if (!messageText && typeof innerPayload === 'string') {
+    messageText = innerPayload.trim();
+  }
+
   logger.log('[Webhook] Extracted messageText:', JSON.stringify(messageText), '| type:', msgType);
 
   if (!messageText) {
     logger.log('[Webhook] Empty messageText - skipping');
     return NextResponse.json({ status: 'ok' }, { status: 200 });
+  }
+
+  // ── Deduplication: msgId only ────────────────────────────────────────────
+  // Only deduplicate when MSG91 provides an explicit message ID.
+  // Content-fingerprint dedup was blocking legitimate re-sends (e.g. "hi")
+  // so it has been removed.
+  const msgId =
+    body?.message_id ||
+    body?.id ||
+    payload?.id ||
+    payload?.msgId ||
+    null;
+
+  if (msgId) {
+    try {
+      const dedupRef = adminDb().collection('_webhook_dedup').doc(`id_${msgId}`);
+      const snap = await dedupRef.get();
+      if (snap.exists) {
+        logger.log('[Webhook] Duplicate msgId, skipping:', msgId);
+        return NextResponse.json({ status: 'ok' }, { status: 200 });
+      }
+      dedupRef.set({ processedAt: Date.now(), from }).catch(() => {});
+    } catch (dedupErr) {
+      logger.warn('[Webhook] Dedup check failed (continuing anyway):', dedupErr.message);
+    }
   }
 
   // ── Return 200 IMMEDIATELY, process in background ─────────────────────────
