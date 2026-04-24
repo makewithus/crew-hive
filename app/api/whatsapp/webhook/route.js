@@ -64,7 +64,14 @@ export async function POST(request) {
 
   // ── Extract message text ──────────────────────────────────────────────────
   const msgType = payload.type || 'text';
-  const innerPayload = payload.payload;
+  // innerPayload may be an object OR a JSON string — normalise to object
+  let innerPayload = payload.payload;
+  if (typeof innerPayload === 'string') {
+    try { innerPayload = JSON.parse(innerPayload); } catch (_) {}
+  }
+
+  // Log the raw payload so we can see exactly what MSG91 sends
+  logger.log('[Webhook] FULL payload dump:', JSON.stringify({ msgType, innerPayload, payloadKeys: payload ? Object.keys(payload) : [] }));
 
   const extractText = (raw) => {
     if (!raw) return '';
@@ -81,35 +88,30 @@ export async function POST(request) {
   };
 
   let messageText = '';
-  if (msgType === 'text') {
+  if (msgType === 'interactive') {
+    // innerPayload.type tells us button_reply vs list_reply
+    // MSG91 may nest data under innerPayload.list_reply / innerPayload.button_reply
+    // OR directly under innerPayload (id/title)
+    const iType = typeof innerPayload === 'object' ? innerPayload?.type : '';
+    const nested = innerPayload?.list_reply || innerPayload?.button_reply || {};
+    messageText =
+      nested?.id ||
+      nested?.title ||
+      innerPayload?.id ||
+      innerPayload?.title ||
+      '';
+    logger.log('[Webhook] interactive | iType:', iType, '| nested:', JSON.stringify(nested), '| messageText:', messageText);
+  }
+
+  // Fallback: try text extraction from every known field if interactive gave nothing
+  if (!messageText) {
     messageText =
       extractText(innerPayload?.text) ||
       extractText(innerPayload?.payload) ||
       extractText(innerPayload) ||
       extractText(payload?.text) ||
+      extractText(payload?.message) ||
       '';
-  } else if (msgType === 'interactive') {
-    const iType = innerPayload?.type;
-    if (iType === 'list_reply') {
-      // MSG91 nests list selection under innerPayload.list_reply
-      messageText =
-        innerPayload?.list_reply?.id ||
-        innerPayload?.list_reply?.title ||
-        innerPayload?.id ||
-        innerPayload?.title ||
-        '';
-    } else if (iType === 'button_reply') {
-      // MSG91 nests button tap under innerPayload.button_reply
-      messageText =
-        innerPayload?.button_reply?.id ||
-        innerPayload?.button_reply?.title ||
-        innerPayload?.id ||
-        innerPayload?.title ||
-        '';
-    } else {
-      messageText = innerPayload?.id || innerPayload?.title || String(innerPayload || '');
-    }
-    logger.log('[Webhook] interactive iType:', iType, '| extracted messageText:', messageText, '| innerPayload:', JSON.stringify(innerPayload));
   }
 
   logger.log('[Webhook] from:', from, '| type:', msgType, '| text:', JSON.stringify(messageText));
