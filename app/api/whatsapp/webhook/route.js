@@ -119,7 +119,8 @@ export async function POST(request) {
     }
 
     // Layer 2: content fingerprint (atomic transaction — only one retry wins)
-    const bucket = Math.floor(Date.now() / 5000); // 5-second window
+    // MSG91 retries webhooks for up to ~60s; 90-second bucket covers all retries
+    const bucket = Math.floor(Date.now() / 90000); // 90-second window
     const fpKey = `fp_${String(from).replace(/\D/g, '')}_${Buffer.from(messageText).toString('base64').slice(0, 40)}_${bucket}`;
     const fpRef = db.collection('_webhook_dedup').doc(fpKey);
     const isDup = await db.runTransaction(async (tx) => {
