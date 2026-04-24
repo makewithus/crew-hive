@@ -51,6 +51,20 @@ export async function POST(request) {
     return NextResponse.json({ status: 'ok' }, { status: 200 });
   }
 
+  // ── Ignore delivery receipts / status events (from = our own number) ──────
+  const ownNumber = String(process.env.MSG91_WHATSAPP_NUMBER || '').replace(/\D/g, '');
+  if (ownNumber && String(from).replace(/\D/g, '') === ownNumber) {
+    logger.log('[Webhook] Ignoring outbound status event from own number:', from);
+    return NextResponse.json({ status: 'ok' }, { status: 200 });
+  }
+
+  // ── Also ignore explicit status/event types ───────────────────────────────
+  const eventType = body?.event || payload?.event || body?.type || '';
+  if (/sent|delivered|read|failed|status/i.test(eventType)) {
+    logger.log('[Webhook] Ignoring status event type:', eventType);
+    return NextResponse.json({ status: 'ok' }, { status: 200 });
+  }
+
   // ── Extract message text ──────────────────────────────────────────────────
   const msgType = payload.type || 'text';
   const innerPayload = payload.payload;
