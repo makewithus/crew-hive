@@ -157,6 +157,12 @@ export async function POST(request) {
       logger.log('[Webhook] after() processing | from:', from, '| msg:', messageText);
       let result = await handleMessage({ userId: from, message: messageText });
 
+      // null = duplicate detected by atomicStepTransition — first call already sent the reply
+      if (result === null) {
+        logger.log('[Webhook] Duplicate step transition suppressed for:', from);
+        return;
+      }
+
       if (!result) {
         result = { type: 'text', text: 'Something went wrong. Please type Hi to restart.' };
       }
