@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
-import { subscribeToAllUsers, approveUserAccess, revokeUserAccess, promoteToAdmin } from '@/lib/firestore';
+import { subscribeToAllUsers, promoteToAdmin } from '@/lib/firestore';
 import Link from 'next/link';
 
 const ROLE_LABELS = {
@@ -33,11 +33,26 @@ export default function SuperAdminUsersPage() {
     return () => unsub();
   }, [loading, currentUser, isSuperAdmin, router]);
 
-  const handleAction = async (uid, action) => {
+  const handleAction = async (uid, action, userRole) => {
     setActionLoading((prev) => ({ ...prev, [uid]: action }));
-    if (action === 'approve') await approveUserAccess(uid);
-    else if (action === 'revoke') await revokeUserAccess(uid);
-    else if (action === 'promote') await promoteToAdmin(uid);
+    try {
+      if (action === 'approve' || action === 'revoke') {
+        // Use the approve API so WhatsApp notifications are sent on approval
+        await fetch('/api/admin/approve', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            id: uid,
+            role: userRole || 'crew',
+            action: action === 'approve' ? 'approve' : 'reject',
+          }),
+        });
+      } else if (action === 'promote') {
+        await promoteToAdmin(uid);
+      }
+    } catch (err) {
+      console.error('[SuperAdmin] handleAction error:', err);
+    }
     setActionLoading((prev) => ({ ...prev, [uid]: null }));
   };
 
@@ -225,7 +240,7 @@ export default function SuperAdminUsersPage() {
                             {isPending && (
                               <button
                                 disabled={!!busy}
-                                onClick={() => handleAction(u.id, 'approve')}
+                                onClick={() => handleAction(u.id, 'approve', u.role)}
                                 className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-green-500/10 border border-green-500/30 text-green-400 hover:bg-green-500/20 transition-all disabled:opacity-50"
                               >
                                 {busy === 'approve' ? '…' : 'Approve'}
@@ -242,7 +257,7 @@ export default function SuperAdminUsersPage() {
                                 </button>
                                 <button
                                   disabled={!!busy}
-                                  onClick={() => handleAction(u.id, 'revoke')}
+                                  onClick={() => handleAction(u.id, 'revoke', u.role)}
                                   className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 hover:bg-red-500/20 transition-all disabled:opacity-50"
                                 >
                                   {busy === 'revoke' ? '…' : 'Revoke'}
@@ -252,7 +267,7 @@ export default function SuperAdminUsersPage() {
                             {!isPending && !isApproved && (
                               <button
                                 disabled={!!busy}
-                                onClick={() => handleAction(u.id, 'approve')}
+                                onClick={() => handleAction(u.id, 'approve', u.role)}
                                 className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-primary/10 border border-primary/30 text-primary hover:bg-primary/20 transition-all disabled:opacity-50"
                               >
                                 {busy === 'approve' ? '…' : 'Grant Access'}

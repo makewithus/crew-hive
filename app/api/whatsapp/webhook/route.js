@@ -92,19 +92,26 @@ export async function POST(request) {
     return NextResponse.json({ status: 'ok' }, { status: 200 });
   }
 
-  // ── Dedup: 3-second bucket per sender + content ───────────────────────────
-  const bucket = Math.floor(Date.now() / 3000);
-  const dedupKey = `${String(from).replace(/\D/g, '')}_${messageText}_${bucket}`;
-  try {
-    const dedupRef = adminDb().collection('_webhook_dedup').doc(dedupKey);
-    const snap = await dedupRef.get();
-    if (snap.exists) {
-      logger.log('[Webhook] Duplicate — skipping:', dedupKey);
-      return NextResponse.json({ status: 'ok' }, { status: 200 });
+  // ── Dedup: msgId only — content dedup causes false drops ────────────────
+  const msgId =
+    body?.message_id ||
+    body?.id ||
+    payload?.id ||
+    payload?.msgId ||
+    null;
+
+  if (msgId) {
+    try {
+      const dedupRef = adminDb().collection('_webhook_dedup').doc(`id_${msgId}`);
+      const snap = await dedupRef.get();
+      if (snap.exists) {
+        logger.log('[Webhook] Duplicate msgId — skipping:', msgId);
+        return NextResponse.json({ status: 'ok' }, { status: 200 });
+      }
+      dedupRef.set({ ts: Date.now(), from }).catch(() => {});
+    } catch (e) {
+      logger.warn('[Webhook] Dedup error (non-critical):', e.message);
     }
-    dedupRef.set({ ts: Date.now(), from }).catch(() => {});
-  } catch (e) {
-    logger.warn('[Webhook] Dedup error (non-critical):', e.message);
   }
 
   // ── Return 200 immediately — process runs after response is sent ──────────
@@ -113,12 +120,18 @@ export async function POST(request) {
       logger.log('[Webhook] after() processing | from:', from, '| msg:', messageText);
       let result = await handleMessage({ userId: from, message: messageText });
 
-      if (!result || !result.text) {
+      if (!result) {
         result = { type: 'text', text: 'Something went wrong. Please type Hi to restart.' };
       }
 
-      await sendConversationMessage(from, result);
-      logger.log('[Webhook] Reply sent to:', from);
+      // handleMessage may return an array [msg1, msg2] or a single message
+      const messages = Array.isArray(result) ? result : [result];
+      for (const msg of messages) {
+        if (!msg?.text) continue;
+        await sendConversationMessage(from, msg);
+      }
+
+      logger.log('[Webhook] Reply(s) sent to:', from, '| count:', messages.length);
     } catch (err) {
       logger.error('[Webhook] after() error:', err);
       try {

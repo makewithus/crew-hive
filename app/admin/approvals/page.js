@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { updateCrewProfile, subscribeToPendingCrew } from '@/lib/firestore';
+import { subscribeToPendingCrew } from '@/lib/firestore';
 import { Button } from '@/components/ui/button';
 import Header from '@/components/Header';
 import AuthGuard from '@/components/AuthGuard';
@@ -37,16 +37,20 @@ export default function AdminApprovalsPage() {
     setError('');
 
     try {
-      const newStatus = approve ? 'approved' : 'rejected';
-      const result = await updateCrewProfile(crewId, { status: newStatus });
+      const res = await fetch('/api/admin/approve', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: crewId, role: 'crew', action: approve ? 'approve' : 'reject' }),
+      });
+      const data = await res.json();
 
-      if (result.success) {
-        setCrew((prev) => prev.filter((c) => c.uid !== crewId));
+      if (data.success) {
+        setCrew((prev) => prev.filter((c) => c.uid !== crewId && c.id !== crewId));
       } else {
-        setError(result.error);
+        setError(data.error || 'Update failed');
       }
     } catch (err) {
-      console.error('[v0] Update error:', err);
+      console.error('[Approvals] handleApproval error:', err);
       setError(err.message);
     } finally {
       setUpdatingId(null);
