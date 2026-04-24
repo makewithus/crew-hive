@@ -1,20 +1,20 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { useAuth } from '@/hooks/useAuth';
-import { subscribeToPendingCrew } from '@/lib/firestore';
-import { Button } from '@/components/ui/button';
-import Header from '@/components/Header';
-import AuthGuard from '@/components/AuthGuard';
-import StatusBadge from '@/components/StatusBadge';
-import { formatDate, formatCurrency } from '@/utils/formatting';
-import { USER_ROLES } from '@/utils/constants';
+import { useState, useEffect } from "react";
+import { useAuth } from "@/hooks/useAuth";
+import { subscribeToPendingCrew } from "@/lib/firestore";
+import { Button } from "@/components/ui/button";
+import Header from "@/components/Header";
+import AuthGuard from "@/components/AuthGuard";
+import StatusBadge from "@/components/StatusBadge";
+import { formatDate, formatCurrency } from "@/utils/formatting";
+import { USER_ROLES } from "@/utils/constants";
 
 export default function AdminApprovalsPage() {
   const { currentUser, userRole } = useAuth();
   const [crews, setCrew] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const [updatingId, setUpdatingId] = useState(null);
 
   // Real-time listener — auto-updates when crew status changes
@@ -34,23 +34,29 @@ export default function AdminApprovalsPage() {
 
   const handleApproval = async (crewId, approve) => {
     setUpdatingId(crewId);
-    setError('');
+    setError("");
 
     try {
-      const res = await fetch('/api/admin/approve', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: crewId, role: 'crew', action: approve ? 'approve' : 'reject' }),
+      const res = await fetch("/api/admin/approve", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: crewId,
+          role: "crew",
+          action: approve ? "approve" : "reject",
+        }),
       });
       const data = await res.json();
 
       if (data.success) {
-        setCrew((prev) => prev.filter((c) => c.uid !== crewId && c.id !== crewId));
+        setCrew((prev) =>
+          prev.filter((c) => c.uid !== crewId && c.id !== crewId),
+        );
       } else {
-        setError(data.error || 'Update failed');
+        setError(data.error || "Update failed");
       }
     } catch (err) {
-      console.error('[Approvals] handleApproval error:', err);
+      console.error("[Approvals] handleApproval error:", err);
       setError(err.message);
     } finally {
       setUpdatingId(null);
@@ -77,8 +83,12 @@ export default function AdminApprovalsPage() {
       <div className="min-h-screen bg-background">
         <div className="bg-card border-b border-border">
           <div className="max-w-7xl mx-auto px-4 py-8">
-            <h1 className="text-3xl font-bold text-foreground">Crew Approvals</h1>
-            <p className="text-muted-foreground mt-2">Review and approve pending crew profiles</p>
+            <h1 className="text-3xl font-bold text-foreground">
+              Crew Approvals
+            </h1>
+            <p className="text-muted-foreground mt-2">
+              Review and approve pending crew profiles
+            </p>
           </div>
         </div>
 
@@ -91,16 +101,25 @@ export default function AdminApprovalsPage() {
 
           {crews.length === 0 ? (
             <div className="text-center py-12">
-              <p className="text-muted-foreground text-lg mb-4">No pending approvals</p>
-              <p className="text-muted-foreground">All crew profiles have been reviewed.</p>
+              <p className="text-muted-foreground text-lg mb-4">
+                No pending approvals
+              </p>
+              <p className="text-muted-foreground">
+                All crew profiles have been reviewed.
+              </p>
             </div>
           ) : (
             <div className="space-y-6">
               {crews.map((crew) => (
-                <div key={crew.uid} className="p-6 bg-card border border-border rounded-lg">
+                <div
+                  key={crew.uid}
+                  className="p-6 bg-card border border-border rounded-lg"
+                >
                   <div className="flex items-start justify-between mb-6">
                     <div>
-                      <h3 className="text-xl font-bold text-foreground">{crew.name}</h3>
+                      <h3 className="text-xl font-bold text-foreground">
+                        {crew.name}
+                      </h3>
                       <p className="text-primary font-medium">{crew.role}</p>
                       <p className="text-muted-foreground text-sm mt-1">
                         Applied {formatDate(crew.createdAt)}
@@ -111,20 +130,30 @@ export default function AdminApprovalsPage() {
 
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6 py-4 border-t border-b border-border">
                     <div>
-                      <p className="text-xs text-muted-foreground">Experience</p>
-                      <p className="font-medium text-foreground">{crew.experience}</p>
+                      <p className="text-xs text-muted-foreground">
+                        Experience
+                      </p>
+                      <p className="font-medium text-foreground">
+                        {crew.experience}
+                      </p>
                     </div>
                     <div>
                       <p className="text-xs text-muted-foreground">Location</p>
                       <p className="font-medium text-foreground">{crew.city}</p>
                     </div>
                     <div>
-                      <p className="text-xs text-muted-foreground">Travel Range</p>
-                      <p className="font-medium text-foreground">{crew.travelRange} km</p>
+                      <p className="text-xs text-muted-foreground">
+                        Travel Range
+                      </p>
+                      <p className="font-medium text-foreground">
+                        {crew.travelRange} km
+                      </p>
                     </div>
                     <div>
                       <p className="text-xs text-muted-foreground">Rate/Day</p>
-                      <p className="font-medium text-foreground">{formatCurrency(crew.ratePerDay)}</p>
+                      <p className="font-medium text-foreground">
+                        {formatCurrency(crew.ratePerDay)}
+                      </p>
                     </div>
                   </div>
 

@@ -22,23 +22,23 @@ export const BOOKING_STATUS = {
 };
 
 export const CREW_ROLES = [
+  'Sound Engineer',
+  'Lighting Operator',
+  'LED Wall Tech',
+  'Stage Manager',
+  'Rigger',
   'Cinematographer',
   'Photographer',
-  'Sound Engineer',
-  'Lighting Technician',
   'Assistant Director',
-  'Production Assistant',
   'Editor',
   'Drone Pilot',
-  'Grip',
-  'Gaffer',
 ];
 
 export const EXPERIENCE_LEVELS = [
-  'Beginner',
-  'Intermediate',
-  'Advanced',
-  'Expert',
+  '0–2 years',
+  '3–5 years',
+  '5–10 years',
+  '10+ years',
 ];
 
 export const AVAILABILITY_STATUSES = {
