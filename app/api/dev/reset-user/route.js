@@ -19,11 +19,6 @@ import { getFirestore } from 'firebase-admin/firestore';
 import '../../../../lib/firebase-admin.js';
 
 export async function POST(req) {
-  // Safety gate — only runs outside production
-  if (process.env.NODE_ENV === 'production' && !process.env.ALLOW_DEV_RESET) {
-    return NextResponse.json({ error: 'Not available in production' }, { status: 403 });
-  }
-
   const { phone } = await req.json();
   if (!phone) {
     return NextResponse.json({ error: 'phone is required (e.g. "918265940243")' }, { status: 400 });
