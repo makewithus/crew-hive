@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
-import { subscribeToAllUsers, promoteToAdmin } from "@/lib/firestore";
+import { promoteToAdmin } from "@/lib/firestore";
 import Link from "next/link";
 
 const ROLE_LABELS = {
@@ -30,9 +30,29 @@ export default function SuperAdminUsersPage() {
   const router = useRouter();
 
   const [users, setUsers] = useState([]);
-  const [filter, setFilter] = useState("all"); // all | pending | approved | crew | organizer
+  const [filter, setFilter] = useState("all");
   const [search, setSearch] = useState("");
   const [actionLoading, setActionLoading] = useState({});
+  const [fetchError, setFetchError] = useState(null);
+
+  const fetchUsers = useCallback(async () => {
+    if (!currentUser) return;
+    try {
+      const token = await currentUser.getIdToken();
+      const res = await fetch("/api/admin/users", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const json = await res.json();
+      if (json.success) {
+        setUsers(json.data);
+        setFetchError(null);
+      } else {
+        setFetchError(json.error);
+      }
+    } catch (err) {
+      setFetchError(err.message);
+    }
+  }, [currentUser]);
 
   useEffect(() => {
     if (loading) return;
@@ -45,20 +65,20 @@ export default function SuperAdminUsersPage() {
       return;
     }
 
-    const unsub = subscribeToAllUsers(({ success, data }) => {
-      if (success) setUsers(data);
-    });
-    return () => unsub();
-  }, [loading, currentUser, isSuperAdmin, router]);
+    fetchUsers();
+    // Poll every 10s for real-time-like updates
+    const interval = setInterval(fetchUsers, 10000);
+    return () => clearInterval(interval);
+  }, [loading, currentUser, isSuperAdmin, router, fetchUsers]);
 
   const handleAction = async (uid, action, userRole) => {
     setActionLoading((prev) => ({ ...prev, [uid]: action }));
     try {
       if (action === "approve" || action === "revoke") {
-        // Use the approve API so WhatsApp notifications are sent on approval
+        const token = await currentUser.getIdToken();
         await fetch("/api/admin/approve", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
           body: JSON.stringify({
             id: uid,
             role: userRole || "crew",
@@ -68,6 +88,7 @@ export default function SuperAdminUsersPage() {
       } else if (action === "promote") {
         await promoteToAdmin(uid);
       }
+      await fetchUsers();
     } catch (err) {
       console.error("[SuperAdmin] handleAction error:", err);
     }
@@ -145,6 +166,12 @@ export default function SuperAdminUsersPage() {
       </nav>
 
       <div className="max-w-7xl mx-auto px-6 py-10">
+        {fetchError && (
+          <div className="mb-4 p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-sm">
+            Error loading users: {fetchError}{" "}
+            <button onClick={fetchUsers} className="underline ml-2">Retry</button>
+          </div>
+        )}
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
           <div>
@@ -163,6 +190,12 @@ export default function SuperAdminUsersPage() {
               </span>
             </div>
           )}
+          <button
+            onClick={fetchUsers}
+            className="px-3 py-1.5 text-xs font-semibold rounded-xl bg-card border border-border text-muted-foreground hover:text-foreground hover:border-primary/40 transition-all"
+          >
+            ↻ Refresh
+          </button>
         </div>
 
         {/* Search + Filter */}
