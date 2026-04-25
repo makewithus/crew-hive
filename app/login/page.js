@@ -52,12 +52,12 @@ export default function LoginPage() {
 
       if (!checkData.exists && checkData.role !== 'super_admin') {
         setLoading(false);
-        showToast('error', 'No profile found for this number. Please register via WhatsApp first.');
+        showToast('error', 'Number not found. Please register via WhatsApp first.');
         return;
       }
-      if (checkData.approved === false && (checkData.role === 'crew' || checkData.role === 'organizer')) {
+      if (checkData.approved === false && checkData.role != null) {
         setLoading(false);
-        showToast('error', "Your profile is pending admin approval. You'll be notified on WhatsApp once approved.");
+        showToast('error', 'Admin has not approved yet. Please try again later.');
         return;
       }
     } catch (_) {}
@@ -110,8 +110,7 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen bg-[#0D0D0D] flex items-center justify-center px-4">
-      {/* Invisible reCAPTCHA anchor — required by Firebase Phone Auth */}
-      <div id="recaptcha-container" />
+      <div id="recaptcha-container" style={{ display: 'none' }} />
 
       {toast && (
         <div className={`fixed top-5 right-5 z-50 max-w-sm w-full px-4 py-3 rounded-xl shadow-2xl text-sm font-medium flex items-start gap-3 border ${

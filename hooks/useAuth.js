@@ -9,14 +9,7 @@ const AuthContext = createContext(null);
 // Firestore doc ID = phone digits only
 const phoneToDocId = (phone) => String(phone || '').replace(/\D/g, '');
 
-// Check client-side if phone is the super admin (safe — admin phone is not a secret)
-const isSuperAdminPhone = (phone) => {
-  if (!phone) return false;
-  const id = phoneToDocId(phone);
-  const adminRaw = process.env.NEXT_PUBLIC_ADMIN_PHONES || '';
-  const adminIds = adminRaw.split(',').map((p) => phoneToDocId(p.trim())).filter(Boolean);
-  return adminIds.length > 0 && adminIds[0] === id;
-};
+// Role is always determined server-side via /api/auth/initialize — never client-side
 
 export const AuthProvider = ({ children }) => {
   const [currentUser, setCurrentUser] = useState(null);
@@ -61,31 +54,25 @@ export const AuthProvider = ({ children }) => {
           }
 
           if (phone) {
-            // Super admin is determined by phone number (env var) — overrides Firestore role
-            if (isSuperAdminPhone(phone)) {
-              setUserRole('super_admin');
-              setUserApproved(true);
-            } else {
-              // Fetch role from server API (uses adminDb — bypasses Firestore rules)
-              try {
-                const res = await fetch('/api/auth/initialize?checkOnly=true', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ phone, checkOnly: true }),
-                });
-                if (res.ok) {
-                  const data = await res.json();
-                  const role = data.role === 'employer' ? 'organizer' : (data.role ?? null);
-                  setUserRole(role);
-                  setUserApproved(role === 'super_admin' ? true : (data.approved ?? false));
-                } else {
-                  setUserRole(null);
-                  setUserApproved(false);
-                }
-              } catch {
+            // Always fetch role from server — server checks Firestore + SUPER_ADMIN_PHONE env
+            try {
+              const res = await fetch('/api/auth/initialize', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ phone, checkOnly: true }),
+              });
+              if (res.ok) {
+                const data = await res.json();
+                const role = data.role === 'employer' ? 'organizer' : (data.role ?? null);
+                setUserRole(role);
+                setUserApproved(role === 'super_admin' ? true : (data.approved ?? false));
+              } else {
                 setUserRole(null);
                 setUserApproved(false);
               }
+            } catch {
+              setUserRole(null);
+              setUserApproved(false);
             }
           } else {
             setUserRole(null);
