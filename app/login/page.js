@@ -3,8 +3,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { sendOtp, verifyOtp, fetchUserRole, isValidPhone } from '@/lib/auth';
-import { getAuth, signInWithCustomToken } from 'firebase/auth';
-import { app } from '@/lib/firebase';
+import { signInWithCustomToken } from 'firebase/auth';
+import { auth } from '@/lib/firebase';
 
 // Hardcoded test credentials — replace with dynamic logic later
 const TEST_PHONE_DIGITS = '1234567890';
@@ -120,7 +120,7 @@ export default function LoginPage() {
           showToast('error', data.error || 'Login failed.');
           return;
         }
-        const authInstance = getAuth(app);
+        const authInstance = auth;
         await signInWithCustomToken(authInstance, data.token);
         router.replace('/super-admin/dashboard');
       } catch (err) {
