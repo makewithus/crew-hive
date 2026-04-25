@@ -1,14 +1,5 @@
-/**
- * POST /api/auth/initialize
- * Called after Firebase OTP verification to determine role + admin status.
- * Body: { phone: "+919876543210", checkOnly?: boolean }
- *   checkOnly=true  → just check if user exists + role, do NOT create stub
- * Returns: { role, approved, exists, isNew }
- */
-
 import { NextResponse } from 'next/server';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { adminDb } from '@/lib/firebase-admin';
 
 const phoneToDocId = (phone) => String(phone).replace(/\D/g, '');
 
@@ -31,32 +22,32 @@ export async function POST(request) {
     const adminIds = getAdminPhones();
     const isSuperAdmin = SUPER_ADMIN_PHONE ? id === SUPER_ADMIN_PHONE : adminIds[0] === id;
 
-    const userRef = doc(db, 'users', id);
-    const snap = await getDoc(userRef);
-    const exists = snap.exists();
+    const db = adminDb();
+    const userRef = db.collection('users').doc(id);
+    const snap = await userRef.get();
+    const exists = snap.exists;
     const userData = exists ? snap.data() : null;
 
-    // Super-admin — always allowed, don't need WhatsApp registration
+    // Super-admin — always allowed
     if (isSuperAdmin) {
       if (!checkOnly) {
         const ts = new Date().toISOString();
-        await setDoc(userRef, { phone: `+${id}`, role: 'super_admin', approved: true, ...(exists ? { updatedAt: ts } : { createdAt: ts, updatedAt: ts }) }, { merge: true });
+        await userRef.set({ phone: `+${id}`, role: 'super_admin', approved: true, ...(exists ? { updatedAt: ts } : { createdAt: ts, updatedAt: ts }) }, { merge: true });
       }
       return NextResponse.json({ role: 'super_admin', approved: true, exists: true, isNew: !exists });
     }
 
-    // checkOnly — just return what we know without creating anything
+    // checkOnly — just return what we know
     if (checkOnly) {
       if (!exists) return NextResponse.json({ role: null, approved: false, exists: false, isNew: true });
       const role = userData.role || null;
-      // Normalize employer -> organizer
       const normalizedRole = role === 'employer' ? 'organizer' : role;
       return NextResponse.json({ role: normalizedRole, approved: userData.approved === true, exists: true, isNew: false });
     }
 
-    // Full initialize flow (called after OTP success)
+    // Full initialize (called after OTP success)
     if (!exists) {
-      await setDoc(userRef, {
+      await userRef.set({
         phone: `+${id}`,
         role: null,
         approved: false,

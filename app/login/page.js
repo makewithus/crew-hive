@@ -80,9 +80,9 @@ export default function LoginPage() {
         showToast('error', 'No profile found for this number. Please register via WhatsApp first.');
         return;
       }
-      if (checkData.role === 'crew' && checkData.approved === false) {
+      if (checkData.approved === false && (checkData.role === 'crew' || checkData.role === 'organizer')) {
         setLoading(false);
-        showToast('error', "Your crew profile is pending approval. You'll be notified on WhatsApp once approved.");
+        showToast('error', "Your profile is pending admin approval. You'll be notified on WhatsApp once approved.");
         return;
       }
     } catch (_) {}
