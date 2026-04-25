@@ -78,8 +78,11 @@ export default function SuperAdminUsersPage() {
     if (u.role === "super_admin") return false;
     const matchSearch =
       !search ||
+      u.phone?.includes(search) ||
       u.phoneNumber?.includes(search) ||
+      u.name?.toLowerCase().includes(search.toLowerCase()) ||
       u.data?.name?.toLowerCase().includes(search.toLowerCase()) ||
+      u.company?.toLowerCase().includes(search.toLowerCase()) ||
       u.data?.company?.toLowerCase().includes(search.toLowerCase());
     const matchFilter =
       filter === "all" ||
@@ -238,8 +241,10 @@ export default function SuperAdminUsersPage() {
                   </tr>
                 ) : (
                   filtered.map((u) => {
-                    const name = u.data?.name || u.data?.company || "—";
-                    const phone = u.phoneNumber || u.id;
+                    const name = u.name || u.data?.name || u.data?.company || u.company || '—';
+                    const phone = u.phone || u.phoneNumber || u.id;
+                    const crewRole = u.crewRole || u.data?.crewRole || u.role_title;
+                    const city = u.city || u.data?.city;
                     const roleInfo = ROLE_LABELS[u.role] || {
                       label: u.role || "Unknown",
                       color: "text-muted-foreground bg-muted border-border",
@@ -277,7 +282,7 @@ export default function SuperAdminUsersPage() {
                               </p>
                               {u.data?.city && (
                                 <p className="text-xs text-muted-foreground">
-                                  {u.data.city}
+                                  {city}
                                 </p>
                               )}
                             </div>
@@ -291,9 +296,9 @@ export default function SuperAdminUsersPage() {
                           >
                             {roleInfo.label}
                           </span>
-                          {u.data?.crewRole && (
+                          {crewRole && (
                             <p className="text-xs text-muted-foreground mt-1">
-                              {u.data.crewRole}
+                              {crewRole}
                             </p>
                           )}
                         </td>

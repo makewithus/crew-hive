@@ -35,6 +35,7 @@ export const AuthProvider = ({ children }) => {
 
           // Phone from Firebase Auth (OTP login) OR from custom token claims (admin PIN login)
           let phone = user.phoneNumber; // e.g. "+919876543210" — set for OTP users
+          let claimsRole = null;
           if (!phone) {
             // Custom-token sign-in (admin PIN) — phone is in the JWT claims
             try {
@@ -42,9 +43,20 @@ export const AuthProvider = ({ children }) => {
               if (idTokenResult.claims?.phone) {
                 phone = idTokenResult.claims.phone;
               }
+              if (idTokenResult.claims?.role) {
+                claimsRole = idTokenResult.claims.role;
+              }
             } catch (_) {}
           }
           setUserPhone(phone);
+
+          // Super admin via custom token claims — skip Firestore lookup
+          if (claimsRole === 'super_admin') {
+            setUserRole('super_admin');
+            setUserApproved(true);
+            setLoading(false);
+            return;
+          }
 
           if (phone) {
             // Super admin is determined by phone number (env var) — overrides Firestore role

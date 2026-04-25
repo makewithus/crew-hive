@@ -60,7 +60,6 @@ export default function LoginPage() {
     // Test number bypass — skip Firebase OTP sending
     if (isTestPhone(digits)) {
       setStep('otp');
-      showToast('info', 'Test mode: use OTP 123456');
       return;
     }
 
