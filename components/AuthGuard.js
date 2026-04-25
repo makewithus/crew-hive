@@ -24,9 +24,9 @@ export const AuthGuard = ({ children, requiredRole = null }) => {
     // Admin/super_admin bypasses approval + role checks
     if (isAdmin) return;
 
-    // Not approved → pending approval
-    if (userApproved === false && pathname !== '/crew/verify') {
-      router.push('/crew/verify');
+    // Not approved crew → stay on login (they get a toast there)
+    if (userApproved === false && userRole === 'crew') {
+      router.push('/login');
       return;
     }
 
@@ -51,7 +51,7 @@ export const AuthGuard = ({ children, requiredRole = null }) => {
   }
 
   if (!isAuthenticated) return null;
-  if (!isAdmin && userApproved === false && pathname !== '/crew/verify') return null;
+  if (!isAdmin && userApproved === false && userRole === 'crew') return null;
   if (requiredRole && userRole !== requiredRole && !isAdmin) return null;
 
   return children;

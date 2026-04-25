@@ -210,7 +210,7 @@ export default function EmployerDashboard() {
               >
                 {/* Header */}
                 <div className="flex items-start gap-3">
-                  <div className="w-10 h-10 bg-[#F5A623]/20 border border-[#F5A623]/30 rounded-full flex items-center justify-center flex-shrink-0">
+                  <div className="w-10 h-10 bg-[#F5A623]/20 border border-[#F5A623]/30 rounded-full flex items-center justify-center shrink-0">
                     <span className="text-[#F5A623] font-semibold">
                       {(member.name || '?')[0].toUpperCase()}
                     </span>
@@ -220,7 +220,7 @@ export default function EmployerDashboard() {
                     <p className="text-zinc-400 text-xs">{member.role}</p>
                   </div>
                   {member.available && (
-                    <span className="text-xs bg-green-500/20 text-green-400 border border-green-500/30 px-2 py-0.5 rounded-full flex-shrink-0">
+                    <span className="text-xs bg-green-500/20 text-green-400 border border-green-500/30 px-2 py-0.5 rounded-full shrink-0">
                       Available
                     </span>
                   )}

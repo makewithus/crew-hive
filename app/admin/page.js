@@ -147,7 +147,7 @@ export default function AdminDashboard() {
                   className="bg-[#1A1A1A] border border-zinc-800 rounded-2xl p-5 flex flex-col sm:flex-row sm:items-center gap-4"
                 >
                   {/* Avatar */}
-                  <div className="w-12 h-12 bg-[#F5A623]/20 border border-[#F5A623]/30 rounded-full flex items-center justify-center flex-shrink-0">
+                  <div className="w-12 h-12 bg-[#F5A623]/20 border border-[#F5A623]/30 rounded-full flex items-center justify-center shrink-0">
                     <span className="text-[#F5A623] font-semibold text-lg">
                       {(crew.name || '?')[0].toUpperCase()}
                     </span>
@@ -173,7 +173,7 @@ export default function AdminDashboard() {
                   </div>
 
                   {/* Actions */}
-                  <div className="flex gap-2 flex-shrink-0">
+                  <div className="flex gap-2 shrink-0">
                     <button
                       onClick={() => handleReject(crew)}
                       disabled={isProcessing}

@@ -91,7 +91,7 @@ export default function VerifyOtpPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-1/3 left-1/2 -translate-x-1/2 w-[600px] h-[600px] bg-primary/6 rounded-full blur-3xl" />
+        <div className="absolute top-1/3 left-1/2 -translate-x-1/2 w-150 h-150 bg-primary/6 rounded-full blur-3xl" />
       </div>
 
       <div className="relative w-full max-w-md">

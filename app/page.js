@@ -12,31 +12,25 @@ export default function Home() {
   useEffect(() => {
     if (loading || !currentUser) return;
     if (isSuperAdmin) { router.push('/super-admin/dashboard'); return; }
-    if (userApproved === false) { router.push('/pending-approval'); return; }
+      // unapproved crew stay on home; they'll get a toast at login time
     if (userRole === 'crew') { router.push('/crew/dashboard'); return; }
     if (userRole === 'organizer') { router.push('/organizer/dashboard'); return; }
   }, [loading, currentUser, userRole, isSuperAdmin, userApproved, router]);
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
-  }
+  // Don't block the landing page for non-logged-in visitors
 
   return (
     <div className="min-h-screen bg-background text-foreground overflow-x-hidden">
 
       {/* ── Background glows ── */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden">
-        <div className="absolute -top-40 left-1/2 -translate-x-1/2 w-[800px] h-[800px] bg-primary/8 rounded-full blur-3xl" />
-        <div className="absolute top-1/2 -right-60 w-[500px] h-[500px] bg-primary/5 rounded-full blur-3xl" />
-        <div className="absolute bottom-0 -left-60 w-[500px] h-[500px] bg-primary/4 rounded-full blur-3xl" />
+        <div className="absolute -top-40 left-1/2 -translate-x-1/2 w-200 h-200 bg-primary/8 rounded-full blur-3xl" />
+        <div className="absolute top-1/2 -right-60 w-125 h-125 bg-primary/5 rounded-full blur-3xl" />
+        <div className="absolute bottom-0 -left-60 w-125 h-125 bg-primary/4 rounded-full blur-3xl" />
       </div>
 
       {/* ── Nav ── */}
-      <nav className="relative z-10 border-b border-border/50 bg-background/80 backdrop-blur-xl sticky top-0">
+      <nav className="sticky top-0 z-10 border-b border-border/50 bg-background/80 backdrop-blur-xl">
         <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-xl bg-primary flex items-center justify-center shadow-lg shadow-primary/40">
@@ -68,7 +62,7 @@ export default function Home() {
           Register on{' '}
           <span className="text-primary relative">
             WhatsApp
-            <span className="absolute -bottom-1 left-0 right-0 h-[3px] bg-primary/40 rounded-full" />
+            <span className="absolute -bottom-1 left-0 right-0 h-0.75 bg-primary/40 rounded-full" />
           </span>
           <br />
           <span className="text-foreground/80">Sign In on Web</span>
@@ -137,7 +131,7 @@ export default function Home() {
           ].map((item, i) => (
             <div
               key={i}
-              className={`relative rounded-2xl border ${item.border} p-8 bg-gradient-to-br ${item.color} backdrop-blur overflow-hidden`}
+              className={`relative rounded-2xl border ${item.border} p-8 bg-linear-to-br ${item.color} backdrop-blur overflow-hidden`}
             >
               <div className="absolute top-4 right-5 text-6xl font-black text-white/4 select-none">
                 {item.step}

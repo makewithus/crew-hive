@@ -56,7 +56,7 @@ export default function PhoneAuthPage() {
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       {/* Background glow */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-1/3 left-1/2 -translate-x-1/2 w-[600px] h-[600px] bg-primary/6 rounded-full blur-3xl" />
+        <div className="absolute top-1/3 left-1/2 -translate-x-1/2 w-150 h-150 bg-primary/6 rounded-full blur-3xl" />
       </div>
 
       <div className="relative w-full max-w-md">
@@ -83,7 +83,7 @@ export default function PhoneAuthPage() {
               </label>
               <div className="flex gap-2">
                 {/* Country code */}
-                <div className="flex-shrink-0">
+                <div className="shrink-0">
                   <select
                     value={countryCode}
                     onChange={(e) => setCountryCode(e.target.value)}

@@ -3,6 +3,16 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { sendOtp, verifyOtp, fetchUserRole, isValidPhone } from '@/lib/auth';
+import { getAuth, signInWithCustomToken } from 'firebase/auth';
+import { app } from '@/lib/firebase';
+
+const ADMIN_PHONES = (process.env.NEXT_PUBLIC_ADMIN_PHONES || '')
+  .split(',').map((p) => p.trim().replace(/\D/g, '')).filter(Boolean);
+
+const isAdminPhone = (fullPhone) => {
+  const digits = String(fullPhone).replace(/\D/g, '');
+  return ADMIN_PHONES.some((a) => digits.endsWith(a) || a.endsWith(digits));
+};
 
 const COUNTRY_CODES = [
   { code: '+91', country: 'India', flag: '🇮🇳' },
@@ -20,6 +30,7 @@ export default function LoginPage() {
   const [countryCode, setCountryCode] = useState('+91');
   const [phone, setPhone] = useState('');
   const [otp, setOtp] = useState('');
+  const [pin, setPin] = useState('');
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState(null);
 
@@ -50,6 +61,12 @@ export default function LoginPage() {
     if (digits.length < 7) { showToast('error', 'Please enter a valid phone number (without country code).'); return; }
     if (!isValidPhone(fullPhone)) { showToast('error', 'Invalid phone number. Check country code and digits.'); return; }
 
+    // Admin PIN bypass — skip OTP entirely
+    if (isAdminPhone(fullPhone)) {
+      setStep('pin');
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -77,6 +94,31 @@ export default function LoginPage() {
     if (!result.success) { showToast('error', result.error); return; }
     setStep('otp');
     showToast('info', `OTP sent to ${countryCode} ${digits}`);
+  };
+
+  const handlePinLogin = async (e) => {
+    e.preventDefault();
+    if (!pin.trim()) { showToast('error', 'Please enter your admin PIN.'); return; }
+    setLoading(true);
+    try {
+      const res = await fetch('/api/auth/admin-token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: fullPhone, pin }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.token) {
+        setLoading(false);
+        showToast('error', data.error || 'Invalid PIN. Please try again.');
+        return;
+      }
+      const auth = getAuth(app);
+      await signInWithCustomToken(auth, data.token);
+      router.replace('/super-admin/dashboard');
+    } catch (err) {
+      setLoading(false);
+      showToast('error', err.message || 'Login failed. Please try again.');
+    }
   };
 
   const handleVerifyOtp = async (e) => {
@@ -116,7 +158,7 @@ export default function LoginPage() {
     }
   };
 
-  const handleBack = () => { setStep('phone'); setOtp(''); };
+  const handleBack = () => { setStep('phone'); setOtp(''); setPin(''); };
 
   return (
     <div className="min-h-screen bg-[#0D0D0D] flex items-center justify-center px-4">
@@ -186,6 +228,31 @@ export default function LoginPage() {
             </>
           )}
 
+          {step === 'pin' && (
+            <>
+              <button onClick={handleBack}
+                className="text-zinc-400 hover:text-white text-sm mb-4 flex items-center gap-1 transition-colors">
+                ← Back
+              </button>
+              <h1 className="text-white text-2xl font-semibold mb-1">Admin Login</h1>
+              <p className="text-zinc-400 text-sm mb-6">Enter your admin PIN to continue</p>
+              <form onSubmit={handlePinLogin} className="space-y-4">
+                <div>
+                  <label className="block text-zinc-300 text-sm font-medium mb-2">Admin PIN</label>
+                  <input type="password" value={pin}
+                    onChange={(e) => setPin(e.target.value)}
+                    placeholder="••••••"
+                    className="w-full bg-[#242424] border border-zinc-700 text-white rounded-xl px-4 py-3 text-lg text-center tracking-[0.4em] focus:outline-none focus:border-[#F5A623] placeholder-zinc-600"
+                    autoFocus autoComplete="current-password" />
+                </div>
+                <button type="submit" disabled={loading || !pin}
+                  className="w-full bg-[#F5A623] hover:bg-[#E8960F] disabled:opacity-50 disabled:cursor-not-allowed text-black font-semibold rounded-xl py-3 text-sm transition-colors">
+                  {loading ? <Spinner text="Signing in…" /> : 'Sign In →'}
+                </button>
+              </form>
+            </>
+          )}
+
           {step === 'otp' && (
             <>
               <button onClick={handleBack}
@@ -200,7 +267,7 @@ export default function LoginPage() {
                   <input type="text" value={otp}
                     onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
                     placeholder="123456"
-                    className="w-full bg-[#242424] border border-zinc-700 text-white rounded-xl px-4 py-3 text-sm text-center tracking-[0.4em] text-lg focus:outline-none focus:border-[#F5A623] placeholder-zinc-600"
+                    className="w-full bg-[#242424] border border-zinc-700 text-white rounded-xl px-4 py-3 text-lg text-center tracking-[0.4em] focus:outline-none focus:border-[#F5A623] placeholder-zinc-600"
                     autoFocus inputMode="numeric" maxLength={6} autoComplete="one-time-code" />
                 </div>
                 <button type="submit" disabled={loading || otp.length < 6}
