@@ -32,8 +32,18 @@ export const AuthProvider = ({ children }) => {
       try {
         if (user) {
           setCurrentUser(user);
-          // Use phone number (E.164) from Firebase Auth as Firestore doc ID
-          const phone = user.phoneNumber; // e.g. "+919876543210"
+
+          // Phone from Firebase Auth (OTP login) OR from custom token claims (admin PIN login)
+          let phone = user.phoneNumber; // e.g. "+919876543210" — set for OTP users
+          if (!phone) {
+            // Custom-token sign-in (admin PIN) — phone is in the JWT claims
+            try {
+              const idTokenResult = await user.getIdTokenResult();
+              if (idTokenResult.claims?.phone) {
+                phone = idTokenResult.claims.phone;
+              }
+            } catch (_) {}
+          }
           setUserPhone(phone);
 
           if (phone) {
