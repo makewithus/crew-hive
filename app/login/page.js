@@ -74,7 +74,7 @@ export default function LoginPage() {
     if (otp.length < 6) { showToast('error', 'Please enter the 6-digit OTP.'); return; }
     setLoading(true);
 
-    const verifyResult = await verifyOtp(otp, fullPhone);
+    const verifyResult = await verifyOtp(otp);
     if (!verifyResult.success) {
       setLoading(false);
       showToast('error', verifyResult.error);
@@ -110,6 +110,8 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen bg-[#0D0D0D] flex items-center justify-center px-4">
+      {/* Invisible reCAPTCHA anchor — required by Firebase Phone Auth */}
+      <div id="recaptcha-container" />
 
       {toast && (
         <div className={`fixed top-5 right-5 z-50 max-w-sm w-full px-4 py-3 rounded-xl shadow-2xl text-sm font-medium flex items-start gap-3 border ${
