@@ -12,7 +12,7 @@ import AuthGuard from '@/components/AuthGuard';
 import { USER_ROLES } from '@/utils/constants';
 
 export default function CrewDashboardPage() {
-  const { currentUser } = useAuth();
+  const { currentUser, userPhone } = useAuth();
   const router = useRouter();
   const [crew, setCrew] = useState(null);
   const [bookings, setBookings] = useState([]);
@@ -22,10 +22,10 @@ export default function CrewDashboardPage() {
 
   // Real-time listeners — update instantly without page refresh
   useEffect(() => {
-    if (!currentUser) return;
+    if (!currentUser || !userPhone) return;
     setLoading(true);
 
-    const unsubCrew = subscribeToCrewProfile(currentUser.uid, (result) => {
+    const unsubCrew = subscribeToCrewProfile(userPhone, (result) => {
       if (result.success) {
         setCrew(result.data);
         setLoading(false);
@@ -36,7 +36,7 @@ export default function CrewDashboardPage() {
       }
     });
 
-    const unsubBookings = subscribeToCrewBookings(currentUser.uid, (result) => {
+    const unsubBookings = subscribeToCrewBookings(userPhone, (result) => {
       if (result.success) setBookings(result.data);
     });
 
@@ -44,7 +44,7 @@ export default function CrewDashboardPage() {
       unsubCrew();
       unsubBookings();
     };
-  }, [currentUser]);
+  }, [currentUser, userPhone]);
 
   const handleAvailabilityChange = async (newStatus) => {
     if (!crew) return;
@@ -53,7 +53,7 @@ export default function CrewDashboardPage() {
 
     try {
       console.log('[v0] Updating availability:', newStatus);
-      const result = await updateCrewProfile(currentUser.uid, { available: newStatus });
+      const result = await updateCrewProfile(userPhone, { available: newStatus });
 
       if (result.success) {
         setCrew((prev) => ({ ...prev, available: newStatus }));

@@ -11,7 +11,7 @@ import AuthGuard from '@/components/AuthGuard';
 import { USER_ROLES } from '@/utils/constants';
 
 export default function OrganizerDashboardPage() {
-  const { currentUser } = useAuth();
+  const { currentUser, userPhone } = useAuth();
   const router = useRouter();
   const [organizer, setOrganizer] = useState(null);
   const [stats, setStats] = useState({ totalCrew: 0, availableCrew: 0, totalBookings: 0 });
@@ -20,15 +20,15 @@ export default function OrganizerDashboardPage() {
 
   useEffect(() => {
     loadData();
-  }, [currentUser]);
+  }, [currentUser, userPhone]);
 
   const loadData = async () => {
-    if (!currentUser) return;
+    if (!currentUser || !userPhone) return;
     setLoading(true);
     setError('');
 
     try {
-      const orgResult = await getOrganizerProfile(currentUser.uid);
+      const orgResult = await getOrganizerProfile(userPhone);
       if (orgResult.success) {
         setOrganizer(orgResult.data);
       } else {
@@ -39,7 +39,7 @@ export default function OrganizerDashboardPage() {
 
       const [crewResult, bookingsResult] = await Promise.all([
         getApprovedCrew(),
-        getOrganizerBookings(currentUser.uid),
+        getOrganizerBookings(userPhone),
       ]);
 
       if (crewResult.success) {

@@ -1,0 +1,62 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper: is the caller authenticated?
+    function isAuth() {
+      return request.auth != null;
+    }
+
+    // Helper: caller's phone digits match docId
+    function isOwner(docId) {
+      return isAuth() && (
+        request.auth.token.phone_number != null &&
+        request.auth.token.phone_number.replace('+', '').replace('-', '') == docId
+      );
+    }
+
+    // Helper: is admin (custom token with role claim, or phone matches admin)
+    function isAdmin() {
+      return isAuth() && (
+        request.auth.token.role == 'super_admin' ||
+        request.auth.token.role == 'admin'
+      );
+    }
+
+    // users collection: owner or admin can read/write
+    match /users/{userId} {
+      allow read: if isAuth() && (isOwner(userId) || isAdmin());
+      allow write: if isAdmin();
+    }
+
+    // crew collection: owner reads own, approved crew is readable by all auth users
+    match /crew/{crewId} {
+      allow read: if isAuth();
+      allow write: if isAuth() && (isOwner(crewId) || isAdmin());
+    }
+
+    // organizers collection: owner reads own, all auth users can read approved
+    match /organizers/{orgId} {
+      allow read: if isAuth();
+      allow write: if isAuth() && (isOwner(orgId) || isAdmin());
+    }
+
+    // employers (legacy alias for organizers)
+    match /employers/{empId} {
+      allow read: if isAuth();
+      allow write: if isAuth() && (isOwner(empId) || isAdmin());
+    }
+
+    // bookings: crew and organizer involved can read/write
+    match /bookings/{bookingId} {
+      allow read: if isAuth();
+      allow write: if isAuth();
+    }
+
+    // dedup: server-side only (admin SDK bypasses rules)
+    match /dedup/{dedupId} {
+      allow read, write: if false;
+    }
+  }
+}
