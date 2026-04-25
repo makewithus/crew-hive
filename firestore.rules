@@ -9,10 +9,13 @@ service cloud.firestore {
     }
 
     // Helper: caller's phone digits match docId
+    // Supports both Firebase phone auth (phone_number claim) and
+    // custom token auth (uid == phoneDigits)
     function isOwner(docId) {
       return isAuth() && (
-        request.auth.token.phone_number != null &&
-        request.auth.token.phone_number.replace('+', '').replace('-', '') == docId
+        request.auth.uid == docId ||
+        (request.auth.token.phone_number != null &&
+         request.auth.token.phone_number.replace('+', '').replace('-', '') == docId)
       );
     }
 
@@ -56,6 +59,11 @@ service cloud.firestore {
 
     // dedup: server-side only (admin SDK bypasses rules)
     match /dedup/{dedupId} {
+      allow read, write: if false;
+    }
+
+    // otpCodes: server-side only — never readable from client
+    match /otpCodes/{docId} {
       allow read, write: if false;
     }
   }

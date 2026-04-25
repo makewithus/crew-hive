@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
-import { getSuperAdminStats } from '@/lib/firestore';
+import { auth } from '@/lib/firebase';
 import Link from 'next/link';
 
 export default function SuperAdminDashboard() {
@@ -18,9 +18,18 @@ export default function SuperAdminDashboard() {
     if (!isSuperAdmin) { router.push('/'); return; }
 
     const fetchStats = async () => {
-      const result = await getSuperAdminStats();
-      if (result.success) setStats(result.data);
-      setStatsLoading(false);
+      try {
+        const token = await auth.currentUser?.getIdToken();
+        const res = await fetch('/api/admin/stats', {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const result = await res.json();
+        if (result.success) setStats(result.data);
+      } catch (err) {
+        console.error('[SuperAdmin] stats fetch error:', err);
+      } finally {
+        setStatsLoading(false);
+      }
     };
     fetchStats();
   }, [loading, currentUser, isSuperAdmin, router]);

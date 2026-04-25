@@ -3,7 +3,6 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
-import { getUser } from '@/lib/firestore';
 
 const AuthContext = createContext(null);
 
@@ -33,15 +32,18 @@ export const AuthProvider = ({ children }) => {
         if (user) {
           setCurrentUser(user);
 
-          // Phone from Firebase Auth (OTP login) OR from custom token claims (admin PIN login)
-          let phone = user.phoneNumber; // e.g. "+919876543210" — set for OTP users
+          // Phone from Firebase Auth (OTP login) OR from custom token claims
+          let phone = user.phoneNumber; // set for Firebase phone auth users
           let claimsRole = null;
           if (!phone) {
-            // Custom-token sign-in (admin PIN) — phone is in the JWT claims
+            // Custom-token sign-in — phone and role are in JWT claims
             try {
               const idTokenResult = await user.getIdTokenResult();
               if (idTokenResult.claims?.phone) {
                 phone = idTokenResult.claims.phone;
+              } else if (user.uid && /^\d{10,15}$/.test(user.uid)) {
+                // Fallback: uid IS the phone digits for our custom token users
+                phone = `+${user.uid}`;
               }
               if (idTokenResult.claims?.role) {
                 claimsRole = idTokenResult.claims.role;
@@ -64,13 +66,23 @@ export const AuthProvider = ({ children }) => {
               setUserRole('super_admin');
               setUserApproved(true);
             } else {
-              const userResult = await getUser(phone);
-              if (userResult.success) {
-                const data = userResult.data;
-                setUserRole(data.role ?? null);
-                const isAdmin = data.role === 'super_admin';
-                setUserApproved(isAdmin ? true : (data.approved ?? false));
-              } else {
+              // Fetch role from server API (uses adminDb — bypasses Firestore rules)
+              try {
+                const res = await fetch('/api/auth/initialize?checkOnly=true', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ phone, checkOnly: true }),
+                });
+                if (res.ok) {
+                  const data = await res.json();
+                  const role = data.role === 'employer' ? 'organizer' : (data.role ?? null);
+                  setUserRole(role);
+                  setUserApproved(role === 'super_admin' ? true : (data.approved ?? false));
+                } else {
+                  setUserRole(null);
+                  setUserApproved(false);
+                }
+              } catch {
                 setUserRole(null);
                 setUserApproved(false);
               }

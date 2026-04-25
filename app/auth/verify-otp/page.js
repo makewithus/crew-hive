@@ -63,7 +63,7 @@ export default function VerifyOtpPage() {
     }
 
     try {
-      const userData = await fetchUserRole(verifyResult.user.phoneNumber);
+      const userData = await fetchUserRole(verifyResult.phone || verifyResult.user.phoneNumber);
       const { role, approved } = userData;
       if (role === 'super_admin') { router.push('/super-admin/dashboard'); return; }
       if (role === 'admin') { router.push('/admin'); return; }

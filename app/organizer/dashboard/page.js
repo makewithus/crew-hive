@@ -3,7 +3,8 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
-import { getOrganizerProfile, getApprovedCrew, getOrganizerBookings } from '@/lib/firestore';
+import { getApprovedCrew, getOrganizerBookings } from '@/lib/firestore';
+import { auth } from '@/lib/firebase';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import Header from '@/components/Header';
@@ -28,7 +29,12 @@ export default function OrganizerDashboardPage() {
     setError('');
 
     try {
-      const orgResult = await getOrganizerProfile(userPhone);
+      const token = await auth.currentUser?.getIdToken();
+      const profileRes = await fetch(
+        `/api/organizer/profile?phone=${encodeURIComponent(userPhone)}`,
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
+      const orgResult = await profileRes.json();
       if (orgResult.success) {
         setOrganizer(orgResult.data);
       } else {

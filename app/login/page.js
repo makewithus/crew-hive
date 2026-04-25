@@ -3,14 +3,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { sendOtp, verifyOtp, fetchUserRole, isValidPhone } from '@/lib/auth';
-import { signInWithCustomToken } from 'firebase/auth';
-import { auth } from '@/lib/firebase';
-
-// Hardcoded test credentials — replace with dynamic logic later
-const TEST_PHONE_DIGITS = '1234567890';
-const TEST_OTP = '123456';
-
-const isTestPhone = (phoneDigits) => String(phoneDigits).replace(/\D/g, '') === TEST_PHONE_DIGITS;
 
 const COUNTRY_CODES = [
   { code: '+91', country: 'India', flag: '🇮🇳' },
@@ -39,29 +31,12 @@ export default function LoginPage() {
 
   const showToast = useCallback((type, message) => setToast({ type, message }), []);
 
-  useEffect(() => {
-    return () => {
-      try {
-        if (typeof window !== 'undefined' && window._recaptchaVerifier) {
-          window._recaptchaVerifier.clear();
-          window._recaptchaVerifier = null;
-        }
-      } catch (_) {}
-    };
-  }, []);
-
   const fullPhone = `${countryCode}${phone.replace(/\D/g, '')}`;
 
   const handleSendOtp = async (e) => {
     e.preventDefault();
     const digits = phone.replace(/\D/g, '');
     if (digits.length < 7) { showToast('error', 'Please enter a valid phone number (without country code).'); return; }
-
-    // Test number bypass — skip Firebase OTP sending
-    if (isTestPhone(digits)) {
-      setStep('otp');
-      return;
-    }
 
     if (!isValidPhone(fullPhone)) { showToast('error', 'Invalid phone number. Check country code and digits.'); return; }
 
@@ -99,37 +74,7 @@ export default function LoginPage() {
     if (otp.length < 6) { showToast('error', 'Please enter the 6-digit OTP.'); return; }
     setLoading(true);
 
-    // Test number: validate against hardcoded OTP and issue custom token
-    const phoneDigits = phone.replace(/\D/g, '');
-    if (isTestPhone(phoneDigits)) {
-      if (otp !== TEST_OTP) {
-        setLoading(false);
-        showToast('error', 'Wrong OTP. Test OTP is 123456.');
-        return;
-      }
-      try {
-        const res = await fetch('/api/auth/admin-token', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ phone: TEST_PHONE_DIGITS, otp: TEST_OTP }),
-        });
-        const data = await res.json();
-        if (!res.ok || !data.token) {
-          setLoading(false);
-          showToast('error', data.error || 'Login failed.');
-          return;
-        }
-        const authInstance = auth;
-        await signInWithCustomToken(authInstance, data.token);
-        router.replace('/super-admin/dashboard');
-      } catch (err) {
-        setLoading(false);
-        showToast('error', err.message || 'Login failed.');
-      }
-      return;
-    }
-
-    const verifyResult = await verifyOtp(otp);
+    const verifyResult = await verifyOtp(otp, fullPhone);
     if (!verifyResult.success) {
       setLoading(false);
       showToast('error', verifyResult.error);
@@ -140,7 +85,7 @@ export default function LoginPage() {
     }
 
     try {
-      const userData = await fetchUserRole(verifyResult.user.phoneNumber);
+      const userData = await fetchUserRole(verifyResult.phone || verifyResult.user.phoneNumber);
       if (userData.role === 'super_admin') { router.replace('/super-admin/dashboard'); }
       else if (userData.role === 'crew') {
         if (!userData.approved) {
@@ -165,7 +110,6 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen bg-[#0D0D0D] flex items-center justify-center px-4">
-      <div id="recaptcha-container" />
 
       {toast && (
         <div className={`fixed top-5 right-5 z-50 max-w-sm w-full px-4 py-3 rounded-xl shadow-2xl text-sm font-medium flex items-start gap-3 border ${

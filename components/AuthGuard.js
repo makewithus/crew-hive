@@ -33,7 +33,7 @@ export const AuthGuard = ({ children, requiredRole = null }) => {
     // Role mismatch → redirect to the correct dashboard
     if (requiredRole && userRole && userRole !== requiredRole) {
       if (userRole === 'crew') router.push('/crew/dashboard');
-      else if (userRole === 'employer') router.push('/employer/dashboard');
+      else if (userRole === 'organizer' || userRole === 'employer') router.push('/organizer/dashboard');
       else if (userRole === 'admin') router.push('/admin');
       return;
     }
