@@ -150,6 +150,31 @@ export async function POST(request) {
     return NextResponse.json({ status: "ok" }, { status: 200 });
   }
 
+  // ── Message-ID dedup (catches MSG91 webhook retries on Vercel cold starts) ──
+  // MSG91 retries the webhook if no 200 arrives quickly. We use the message's
+  // unique ID (if present) as a content-addressable dedup key with no time window.
+  const { adminDb } = await import("@/lib/firebase-admin");
+  const msgId =
+    payload?.id ||
+    payload?.messageId ||
+    payload?.message_id ||
+    body?.id ||
+    body?.messageId ||
+    null;
+  if (msgId) {
+    const dedupRef = adminDb().collection("dedup").doc(`msg_${String(msgId).replace(/[^a-zA-Z0-9_-]/g, "_").slice(0, 100)}`);
+    try {
+      await dedupRef.create({ ts: Date.now(), from, msgId });
+    } catch (err) {
+      const code = err?.code ?? 0;
+      const errMsg = err?.message ?? "";
+      if (code === 6 || errMsg.includes("ALREADY_EXISTS") || errMsg.includes("already exists")) {
+        logger.warn("[Webhook] MsgID dedup HIT — retry suppressed | msgId:", msgId, "| from:", from);
+        return NextResponse.json({ status: "ok" }, { status: 200 });
+      }
+    }
+  }
+
   // ── Process message and send reply ────────────────────────────────────────
   // Run synchronously so Vercel doesn't add after() scheduling overhead.
   // Dedup is handled in handleMessage (lastMsgNorm plain-get + atomicStepTransition).
