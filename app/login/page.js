@@ -6,13 +6,11 @@ import { sendOtp, verifyOtp, fetchUserRole, isValidPhone } from '@/lib/auth';
 import { getAuth, signInWithCustomToken } from 'firebase/auth';
 import { app } from '@/lib/firebase';
 
-const ADMIN_PHONES = (process.env.NEXT_PUBLIC_ADMIN_PHONES || '')
-  .split(',').map((p) => p.trim().replace(/\D/g, '')).filter(Boolean);
+// Hardcoded test credentials — replace with dynamic logic later
+const TEST_PHONE_DIGITS = '1234567890';
+const TEST_OTP = '123456';
 
-const isAdminPhone = (fullPhone) => {
-  const digits = String(fullPhone).replace(/\D/g, '');
-  return ADMIN_PHONES.some((a) => digits.endsWith(a) || a.endsWith(digits));
-};
+const isTestPhone = (phoneDigits) => String(phoneDigits).replace(/\D/g, '') === TEST_PHONE_DIGITS;
 
 const COUNTRY_CODES = [
   { code: '+91', country: 'India', flag: '🇮🇳' },
@@ -30,7 +28,6 @@ export default function LoginPage() {
   const [countryCode, setCountryCode] = useState('+91');
   const [phone, setPhone] = useState('');
   const [otp, setOtp] = useState('');
-  const [pin, setPin] = useState('');
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState(null);
 
@@ -59,13 +56,15 @@ export default function LoginPage() {
     e.preventDefault();
     const digits = phone.replace(/\D/g, '');
     if (digits.length < 7) { showToast('error', 'Please enter a valid phone number (without country code).'); return; }
-    if (!isValidPhone(fullPhone)) { showToast('error', 'Invalid phone number. Check country code and digits.'); return; }
 
-    // Admin PIN bypass — skip OTP entirely
-    if (isAdminPhone(fullPhone)) {
-      setStep('pin');
+    // Test number bypass — skip Firebase OTP sending
+    if (isTestPhone(digits)) {
+      setStep('otp');
+      showToast('info', 'Test mode: use OTP 123456');
       return;
     }
+
+    if (!isValidPhone(fullPhone)) { showToast('error', 'Invalid phone number. Check country code and digits.'); return; }
 
     setLoading(true);
 
@@ -96,35 +95,40 @@ export default function LoginPage() {
     showToast('info', `OTP sent to ${countryCode} ${digits}`);
   };
 
-  const handlePinLogin = async (e) => {
-    e.preventDefault();
-    if (!pin.trim()) { showToast('error', 'Please enter your admin PIN.'); return; }
-    setLoading(true);
-    try {
-      const res = await fetch('/api/auth/admin-token', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone: fullPhone, pin }),
-      });
-      const data = await res.json();
-      if (!res.ok || !data.token) {
-        setLoading(false);
-        showToast('error', data.error || 'Invalid PIN. Please try again.');
-        return;
-      }
-      const auth = getAuth(app);
-      await signInWithCustomToken(auth, data.token);
-      router.replace('/super-admin/dashboard');
-    } catch (err) {
-      setLoading(false);
-      showToast('error', err.message || 'Login failed. Please try again.');
-    }
-  };
-
   const handleVerifyOtp = async (e) => {
     e.preventDefault();
     if (otp.length < 6) { showToast('error', 'Please enter the 6-digit OTP.'); return; }
     setLoading(true);
+
+    // Test number: validate against hardcoded OTP and issue custom token
+    const phoneDigits = phone.replace(/\D/g, '');
+    if (isTestPhone(phoneDigits)) {
+      if (otp !== TEST_OTP) {
+        setLoading(false);
+        showToast('error', 'Wrong OTP. Test OTP is 123456.');
+        return;
+      }
+      try {
+        const res = await fetch('/api/auth/admin-token', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ phone: TEST_PHONE_DIGITS, otp: TEST_OTP }),
+        });
+        const data = await res.json();
+        if (!res.ok || !data.token) {
+          setLoading(false);
+          showToast('error', data.error || 'Login failed.');
+          return;
+        }
+        const authInstance = getAuth(app);
+        await signInWithCustomToken(authInstance, data.token);
+        router.replace('/super-admin/dashboard');
+      } catch (err) {
+        setLoading(false);
+        showToast('error', err.message || 'Login failed.');
+      }
+      return;
+    }
 
     const verifyResult = await verifyOtp(otp);
     if (!verifyResult.success) {
@@ -158,7 +162,7 @@ export default function LoginPage() {
     }
   };
 
-  const handleBack = () => { setStep('phone'); setOtp(''); setPin(''); };
+  const handleBack = () => { setStep('phone'); setOtp(''); };
 
   return (
     <div className="min-h-screen bg-[#0D0D0D] flex items-center justify-center px-4">
@@ -225,31 +229,6 @@ export default function LoginPage() {
                 <a href="https://wa.me/918139002826?text=Hi" target="_blank" rel="noopener noreferrer"
                   className="text-[#F5A623] hover:underline">Register on WhatsApp</a>
               </p>
-            </>
-          )}
-
-          {step === 'pin' && (
-            <>
-              <button onClick={handleBack}
-                className="text-zinc-400 hover:text-white text-sm mb-4 flex items-center gap-1 transition-colors">
-                ← Back
-              </button>
-              <h1 className="text-white text-2xl font-semibold mb-1">Admin Login</h1>
-              <p className="text-zinc-400 text-sm mb-6">Enter your admin PIN to continue</p>
-              <form onSubmit={handlePinLogin} className="space-y-4">
-                <div>
-                  <label className="block text-zinc-300 text-sm font-medium mb-2">Admin PIN</label>
-                  <input type="password" value={pin}
-                    onChange={(e) => setPin(e.target.value)}
-                    placeholder="••••••"
-                    className="w-full bg-[#242424] border border-zinc-700 text-white rounded-xl px-4 py-3 text-lg text-center tracking-[0.4em] focus:outline-none focus:border-[#F5A623] placeholder-zinc-600"
-                    autoFocus autoComplete="current-password" />
-                </div>
-                <button type="submit" disabled={loading || !pin}
-                  className="w-full bg-[#F5A623] hover:bg-[#E8960F] disabled:opacity-50 disabled:cursor-not-allowed text-black font-semibold rounded-xl py-3 text-sm transition-colors">
-                  {loading ? <Spinner text="Signing in…" /> : 'Sign In →'}
-                </button>
-              </form>
             </>
           )}
 
