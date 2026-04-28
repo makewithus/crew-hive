@@ -1,10 +1,22 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { useAuth } from '@/hooks/useAuth';
-import { auth } from '@/lib/firebase';
-import Link from 'next/link';
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/hooks/useAuth";
+import { auth } from "@/lib/firebase";
+import Link from "next/link";
+import {
+  Users,
+  Clock,
+  CheckCircle2,
+  Film,
+  CircleDot,
+  ClipboardList,
+  RefreshCcw,
+  Calendar,
+  BarChart3,
+  UserCheck,
+} from "lucide-react";
 
 export default function SuperAdminDashboard() {
   const { currentUser, isSuperAdmin, loading, logout } = useAuth();
@@ -14,19 +26,25 @@ export default function SuperAdminDashboard() {
 
   useEffect(() => {
     if (loading) return;
-    if (!currentUser) { router.push('/auth/phone'); return; }
-    if (!isSuperAdmin) { router.push('/'); return; }
+    if (!currentUser) {
+      router.push("/login");
+      return;
+    }
+    if (!isSuperAdmin) {
+      router.push("/login");
+      return;
+    }
 
     const fetchStats = async () => {
       try {
         const token = await auth.currentUser?.getIdToken();
-        const res = await fetch('/api/admin/stats', {
+        const res = await fetch("/api/admin/stats", {
           headers: { Authorization: `Bearer ${token}` },
         });
         const result = await res.json();
         if (result.success) setStats(result.data);
       } catch (err) {
-        console.error('[SuperAdmin] stats fetch error:', err);
+        console.error("[SuperAdmin] stats fetch error:", err);
       } finally {
         setStatsLoading(false);
       }
@@ -36,19 +54,67 @@ export default function SuperAdminDashboard() {
 
   const handleLogout = async () => {
     await logout();
-    router.push('/');
+    router.push("/");
   };
 
   const statCards = stats
     ? [
-        { label: 'Total Users', value: stats.totalUsers, icon: '👥', color: 'text-blue-400', bg: 'bg-blue-400/10 border-blue-400/20' },
-        { label: 'Pending Approval', value: stats.pendingApproval, icon: '⏳', color: 'text-yellow-400', bg: 'bg-yellow-400/10 border-yellow-400/20' },
-        { label: 'Approved Users', value: stats.approvedUsers, icon: '✅', color: 'text-green-400', bg: 'bg-green-400/10 border-green-400/20' },
-        { label: 'Total Crew', value: stats.totalCrew, icon: '🎬', color: 'text-primary', bg: 'bg-primary/10 border-primary/20' },
-        { label: 'Approved Crew', value: stats.approvedCrew, icon: '🟢', color: 'text-emerald-400', bg: 'bg-emerald-400/10 border-emerald-400/20' },
-        { label: 'Organizers', value: stats.organizers, icon: '📋', color: 'text-purple-400', bg: 'bg-purple-400/10 border-purple-400/20' },
-        { label: 'Pending Crew', value: stats.pendingCrew, icon: '🔄', color: 'text-orange-400', bg: 'bg-orange-400/10 border-orange-400/20' },
-        { label: 'Total Bookings', value: stats.totalBookings, icon: '📅', color: 'text-cyan-400', bg: 'bg-cyan-400/10 border-cyan-400/20' },
+        {
+          label: "Total Users",
+          value: stats.totalUsers,
+          icon: <Users className="w-5 h-5" />,
+          color: "text-blue-400",
+          bg: "bg-blue-400/10 border-blue-400/20",
+        },
+        {
+          label: "Pending Approval",
+          value: stats.pendingApproval,
+          icon: <Clock className="w-5 h-5" />,
+          color: "text-yellow-400",
+          bg: "bg-yellow-400/10 border-yellow-400/20",
+        },
+        {
+          label: "Approved Users",
+          value: stats.approvedUsers,
+          icon: <CheckCircle2 className="w-5 h-5" />,
+          color: "text-green-400",
+          bg: "bg-green-400/10 border-green-400/20",
+        },
+        {
+          label: "Total Crew",
+          value: stats.totalCrew,
+          icon: <Film className="w-5 h-5" />,
+          color: "text-primary",
+          bg: "bg-primary/10 border-primary/20",
+        },
+        {
+          label: "Approved Crew",
+          value: stats.approvedCrew,
+          icon: <UserCheck className="w-5 h-5" />,
+          color: "text-emerald-400",
+          bg: "bg-emerald-400/10 border-emerald-400/20",
+        },
+        {
+          label: "Organizers",
+          value: stats.organizers,
+          icon: <ClipboardList className="w-5 h-5" />,
+          color: "text-purple-400",
+          bg: "bg-purple-400/10 border-purple-400/20",
+        },
+        {
+          label: "Pending Crew",
+          value: stats.pendingCrew,
+          icon: <RefreshCcw className="w-5 h-5" />,
+          color: "text-orange-400",
+          bg: "bg-orange-400/10 border-orange-400/20",
+        },
+        {
+          label: "Total Bookings",
+          value: stats.totalBookings,
+          icon: <Calendar className="w-5 h-5" />,
+          color: "text-cyan-400",
+          bg: "bg-cyan-400/10 border-cyan-400/20",
+        },
       ]
     : [];
 
@@ -59,7 +125,9 @@ export default function SuperAdminDashboard() {
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center shadow-lg shadow-primary/30">
-              <span className="text-primary-foreground font-bold text-sm">C</span>
+              <span className="text-primary-foreground font-bold text-sm">
+                C
+              </span>
             </div>
             <span className="text-lg font-bold text-foreground">CrewHive</span>
             <span className="px-2 py-0.5 text-xs font-bold rounded-full bg-primary/20 text-primary border border-primary/30 ml-1">
@@ -86,15 +154,22 @@ export default function SuperAdminDashboard() {
       <div className="max-w-7xl mx-auto px-6 py-10">
         {/* Header */}
         <div className="mb-10">
-          <h1 className="text-3xl font-bold text-foreground mb-1">Super Admin Portal</h1>
-          <p className="text-muted-foreground">Platform overview and user management</p>
+          <h1 className="text-3xl font-bold text-foreground mb-1">
+            Super Admin Portal
+          </h1>
+          <p className="text-muted-foreground">
+            Platform overview and user management
+          </p>
         </div>
 
         {/* Stat grid */}
         {statsLoading ? (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10">
             {[...Array(8)].map((_, i) => (
-              <div key={i} className="h-28 rounded-2xl bg-card border border-border animate-pulse" />
+              <div
+                key={i}
+                className="h-28 rounded-2xl bg-card border border-border animate-pulse"
+              />
             ))}
           </div>
         ) : (
@@ -102,8 +177,10 @@ export default function SuperAdminDashboard() {
             {statCards.map((s) => (
               <div key={s.label} className={`rounded-2xl border p-5 ${s.bg}`}>
                 <div className="flex items-center gap-2 mb-3">
-                  <span className="text-xl">{s.icon}</span>
-                  <span className="text-xs font-medium text-muted-foreground">{s.label}</span>
+                  <span className={`${s.color}`}>{s.icon}</span>
+                  <span className="text-xs font-medium text-muted-foreground">
+                    {s.label}
+                  </span>
                 </div>
                 <p className={`text-3xl font-bold ${s.color}`}>{s.value}</p>
               </div>
@@ -118,10 +195,12 @@ export default function SuperAdminDashboard() {
             className="group bg-card border border-border hover:border-primary/50 rounded-2xl p-6 transition-all hover:bg-primary/5"
           >
             <div className="w-12 h-12 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center mb-4 group-hover:bg-primary/20 transition-all">
-              <span className="text-2xl">👥</span>
+              <Users className="w-6 h-6 text-primary" />
             </div>
             <h3 className="text-foreground font-bold mb-1">Manage Users</h3>
-            <p className="text-muted-foreground text-sm">Approve or revoke access for crew & organizers</p>
+            <p className="text-muted-foreground text-sm">
+              Approve or revoke access for crew & organizers
+            </p>
             {stats?.pendingApproval > 0 && (
               <span className="mt-3 inline-flex items-center gap-1.5 text-xs font-bold text-yellow-400 bg-yellow-400/10 border border-yellow-400/20 px-2.5 py-1 rounded-full">
                 <span className="w-1.5 h-1.5 rounded-full bg-yellow-400 animate-pulse" />
@@ -135,21 +214,23 @@ export default function SuperAdminDashboard() {
             className="group bg-card border border-border hover:border-primary/50 rounded-2xl p-6 transition-all hover:bg-primary/5"
           >
             <div className="w-12 h-12 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center mb-4 group-hover:bg-primary/20 transition-all">
-              <span className="text-2xl">🎬</span>
+              <Film className="w-6 h-6 text-primary" />
             </div>
             <h3 className="text-foreground font-bold mb-1">Crew Approvals</h3>
-            <p className="text-muted-foreground text-sm">Review and approve crew member applications</p>
+            <p className="text-muted-foreground text-sm">
+              Review and approve crew member applications
+            </p>
           </Link>
 
           <div className="bg-card border border-border rounded-2xl p-6">
             <div className="w-12 h-12 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center mb-4">
-              <span className="text-2xl">📊</span>
+              <BarChart3 className="w-6 h-6 text-primary" />
             </div>
             <h3 className="text-foreground font-bold mb-1">Platform Stats</h3>
             <p className="text-muted-foreground text-sm">
               {stats
                 ? `${stats.totalUsers} users · ${stats.totalBookings} bookings`
-                : 'Loading…'}
+                : "Loading…"}
             </p>
           </div>
         </div>

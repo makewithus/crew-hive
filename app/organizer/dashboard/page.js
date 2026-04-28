@@ -1,23 +1,27 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { useAuth } from '@/hooks/useAuth';
-import { getApprovedCrew, getOrganizerBookings } from '@/lib/firestore';
-import { auth } from '@/lib/firebase';
-import { Button } from '@/components/ui/button';
-import Link from 'next/link';
-import Header from '@/components/Header';
-import AuthGuard from '@/components/AuthGuard';
-import { USER_ROLES } from '@/utils/constants';
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/hooks/useAuth";
+import { getApprovedCrew, getOrganizerBookings } from "@/lib/firestore";
+import { auth } from "@/lib/firebase";
+import { Button } from "@/components/ui/button";
+import Link from "next/link";
+import Header from "@/components/Header";
+import AuthGuard from "@/components/AuthGuard";
+import { USER_ROLES } from "@/utils/constants";
 
 export default function OrganizerDashboardPage() {
   const { currentUser, userPhone } = useAuth();
   const router = useRouter();
   const [organizer, setOrganizer] = useState(null);
-  const [stats, setStats] = useState({ totalCrew: 0, availableCrew: 0, totalBookings: 0 });
+  const [stats, setStats] = useState({
+    totalCrew: 0,
+    availableCrew: 0,
+    totalBookings: 0,
+  });
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
 
   useEffect(() => {
     loadData();
@@ -26,7 +30,7 @@ export default function OrganizerDashboardPage() {
   const loadData = async () => {
     if (!currentUser || !userPhone) return;
     setLoading(true);
-    setError('');
+    setError("");
 
     try {
       const token = await auth.currentUser?.getIdToken();
@@ -38,8 +42,8 @@ export default function OrganizerDashboardPage() {
       if (orgResult.success) {
         setOrganizer(orgResult.data);
       } else {
-        setError('Profile not found. Please complete your setup.');
-        setTimeout(() => router.push('/organizer/setup'), 2000);
+        setError("Profile not found. Please complete your setup.");
+        setTimeout(() => router.push("/organizer/setup"), 2000);
         return;
       }
 
@@ -53,11 +57,13 @@ export default function OrganizerDashboardPage() {
         setStats({
           totalCrew: crewResult.data.length,
           availableCrew,
-          totalBookings: bookingsResult.success ? bookingsResult.data.length : 0,
+          totalBookings: bookingsResult.success
+            ? bookingsResult.data.length
+            : 0,
         });
       }
     } catch (err) {
-      console.error('[v0] Load error:', err);
+      console.error("[v0] Load error:", err);
       setError(err.message);
     } finally {
       setLoading(false);
@@ -85,7 +91,9 @@ export default function OrganizerDashboardPage() {
         <div className="bg-card border-b border-border">
           <div className="max-w-7xl mx-auto px-4 py-8">
             <h1 className="text-3xl font-bold text-foreground">Dashboard</h1>
-            <p className="text-muted-foreground">Welcome back, {organizer?.name || 'Organizer'}</p>
+            <p className="text-muted-foreground">
+              Welcome back, {organizer?.name || "Organizer"}
+            </p>
           </div>
         </div>
 
@@ -98,17 +106,27 @@ export default function OrganizerDashboardPage() {
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
             <div className="p-6 bg-card border border-border rounded-lg">
-              <p className="text-muted-foreground text-sm">Total Crew Available</p>
-              <p className="text-4xl font-bold text-foreground mt-2">{stats.totalCrew}</p>
-              <p className="text-sm text-primary mt-2">{stats.availableCrew} available now</p>
+              <p className="text-muted-foreground text-sm">
+                Total Crew Available
+              </p>
+              <p className="text-4xl font-bold text-foreground mt-2">
+                {stats.totalCrew}
+              </p>
+              <p className="text-sm text-primary mt-2">
+                {stats.availableCrew} available now
+              </p>
             </div>
             <div className="p-6 bg-card border border-border rounded-lg">
               <p className="text-muted-foreground text-sm">Your Bookings</p>
-              <p className="text-4xl font-bold text-primary mt-2">{stats.totalBookings}</p>
+              <p className="text-4xl font-bold text-primary mt-2">
+                {stats.totalBookings}
+              </p>
             </div>
             <div className="p-6 bg-card border border-border rounded-lg">
               <p className="text-muted-foreground text-sm">Organization</p>
-              <p className="text-lg font-bold text-foreground mt-2">{organizer?.companyName}</p>
+              <p className="text-lg font-bold text-foreground mt-2">
+                {organizer?.companyName}
+              </p>
             </div>
           </div>
 
@@ -120,7 +138,10 @@ export default function OrganizerDashboardPage() {
                   Search for Crew
                 </Button>
               </Link>
-              <Button variant="outline" className="w-full border-border text-foreground hover:bg-muted py-6 text-lg">
+              <Button
+                variant="outline"
+                className="w-full border-border text-foreground hover:bg-muted hover:text-foreground py-6 text-lg"
+              >
                 View My Bookings
               </Button>
             </div>

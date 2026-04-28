@@ -162,14 +162,29 @@ export async function POST(request) {
     body?.messageId ||
     null;
   if (msgId) {
-    const dedupRef = adminDb().collection("dedup").doc(`msg_${String(msgId).replace(/[^a-zA-Z0-9_-]/g, "_").slice(0, 100)}`);
+    const dedupRef = adminDb()
+      .collection("dedup")
+      .doc(
+        `msg_${String(msgId)
+          .replace(/[^a-zA-Z0-9_-]/g, "_")
+          .slice(0, 100)}`,
+      );
     try {
       await dedupRef.create({ ts: Date.now(), from, msgId });
     } catch (err) {
       const code = err?.code ?? 0;
       const errMsg = err?.message ?? "";
-      if (code === 6 || errMsg.includes("ALREADY_EXISTS") || errMsg.includes("already exists")) {
-        logger.warn("[Webhook] MsgID dedup HIT — retry suppressed | msgId:", msgId, "| from:", from);
+      if (
+        code === 6 ||
+        errMsg.includes("ALREADY_EXISTS") ||
+        errMsg.includes("already exists")
+      ) {
+        logger.warn(
+          "[Webhook] MsgID dedup HIT — retry suppressed | msgId:",
+          msgId,
+          "| from:",
+          from,
+        );
         return NextResponse.json({ status: "ok" }, { status: 200 });
       }
     }

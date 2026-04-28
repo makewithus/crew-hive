@@ -39,7 +39,10 @@ export async function POST(request) {
       .update({ status, approved, updatedAt: ts })
       .catch(() =>
         // Fallback to legacy collection name if organizers doesn't exist yet
-        db.collection("employers").doc(id).update({ status, approved, updatedAt: ts })
+        db
+          .collection("employers")
+          .doc(id)
+          .update({ status, approved, updatedAt: ts }),
       );
 
     // ── 2. Update the users collection ─────────────────────────────────────

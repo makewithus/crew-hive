@@ -1,30 +1,42 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { useAuth } from '@/hooks/useAuth';
-import { getCrewProfile, createBooking, getOrganizerProfile } from '@/lib/firestore';
-import { sendBookingNotificationToCrew } from '@/lib/booking-notify';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import Header from '@/components/Header';
-import AuthGuard from '@/components/AuthGuard';
-import { formatCurrency, formatDate } from '@/utils/formatting';
-import { USER_ROLES } from '@/utils/constants';
-import Link from 'next/link';
+import { useState, useEffect, use } from "react";
+import { useAuth } from "@/hooks/useAuth";
+import {
+  getCrewProfile,
+  createBooking,
+  getOrganizerProfile,
+} from "@/lib/firestore";
+import { sendBookingNotificationToCrew } from "@/lib/booking-notify";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Calendar } from "@/components/ui/calendar";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { CalendarIcon, User } from "lucide-react";
+import Header from "@/components/Header";
+import AuthGuard from "@/components/AuthGuard";
+import { formatCurrency, formatDate } from "@/utils/formatting";
+import { USER_ROLES } from "@/utils/constants";
+import Link from "next/link";
 
 export default function CrewProfilePage({ params }) {
   const { currentUser } = useAuth();
-  const crewId = params.id;
+  const { id: crewId } = use(params);
   const [crew, setCrew] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const [showBookingForm, setShowBookingForm] = useState(false);
   const [bookingData, setBookingData] = useState({
-    date: '',
-    location: '',
-    notes: '',
+    date: "",
+    location: "",
+    notes: "",
   });
   const [submitting, setSubmitting] = useState(false);
+  const [calendarOpen, setCalendarOpen] = useState(false);
 
   useEffect(() => {
     loadCrew();
@@ -32,17 +44,17 @@ export default function CrewProfilePage({ params }) {
 
   const loadCrew = async () => {
     setLoading(true);
-    setError('');
+    setError("");
 
     try {
       const result = await getCrewProfile(crewId);
       if (result.success) {
         setCrew(result.data);
       } else {
-        setError('Crew member not found');
+        setError("Crew member not found");
       }
     } catch (err) {
-      console.error('[v0] Load error:', err);
+      console.error("[v0] Load error:", err);
       setError(err.message);
     } finally {
       setLoading(false);
@@ -59,10 +71,10 @@ export default function CrewProfilePage({ params }) {
 
   const handleSubmitBooking = async (e) => {
     e.preventDefault();
-    setError('');
+    setError("");
 
     if (!bookingData.date || !bookingData.location) {
-      setError('Date and location are required');
+      setError("Date and location are required");
       return;
     }
 
@@ -80,7 +92,7 @@ export default function CrewProfilePage({ params }) {
 
       if (result.success) {
         // Fetch organizer name for the notification message
-        let organizerName = 'An organizer';
+        let organizerName = "An organizer";
         try {
           const orgResult = await getOrganizerProfile(currentUser.uid);
           if (orgResult.success && orgResult.data?.name) {
@@ -88,24 +100,24 @@ export default function CrewProfilePage({ params }) {
           }
         } catch (_) {}
 
-        const jobDetails = `Date: ${bookingData.date} | Location: ${bookingData.location}${bookingData.notes ? ` | Notes: ${bookingData.notes}` : ''}`;
+        const jobDetails = `Date: ${bookingData.date} | Location: ${bookingData.location}${bookingData.notes ? ` | Notes: ${bookingData.notes}` : ""}`;
 
         // Notify crew via conversation engine — sets their chat to booking_response step
         await sendBookingNotificationToCrew(
           crewId,
           result.bookingId,
           organizerName,
-          jobDetails
+          jobDetails,
         );
 
-        alert('Booking request sent! The crew member has been notified.');
-        setBookingData({ date: '', location: '', notes: '' });
+        alert("Booking request sent! The crew member has been notified.");
+        setBookingData({ date: "", location: "", notes: "" });
         setShowBookingForm(false);
       } else {
         setError(result.error);
       }
     } catch (err) {
-      console.error('[v0] Booking error:', err);
+      console.error("[v0] Booking error:", err);
       setError(err.message);
     } finally {
       setSubmitting(false);
@@ -131,7 +143,7 @@ export default function CrewProfilePage({ params }) {
         <Header />
         <div className="min-h-screen bg-background">
           <div className="max-w-4xl mx-auto px-4 py-12 text-center">
-            <p className="text-red-700 text-lg">{error || 'Crew not found'}</p>
+            <p className="text-red-700 text-lg">{error || "Crew not found"}</p>
             <Link href="/organizer/search">
               <Button className="mt-4 bg-primary text-primary-foreground hover:bg-primary/90">
                 Back to Search
@@ -148,7 +160,10 @@ export default function CrewProfilePage({ params }) {
       <Header />
       <div className="min-h-screen bg-background">
         <div className="max-w-4xl mx-auto px-4 py-12">
-          <Link href="/organizer/search" className="text-primary hover:text-primary/90 font-medium mb-8 inline-block">
+          <Link
+            href="/organizer/search"
+            className="text-primary hover:text-primary/90 font-medium mb-8 inline-block"
+          >
             ← Back to Search
           </Link>
 
@@ -156,39 +171,59 @@ export default function CrewProfilePage({ params }) {
             {/* Header */}
             <div className="h-48 bg-muted flex items-center justify-center text-6xl">
               {crew.profileImage ? (
-                <img src={crew.profileImage} alt={crew.name} className="w-full h-full object-cover" />
+                <img
+                  src={crew.profileImage}
+                  alt={crew.name}
+                  className="w-full h-full object-cover"
+                />
               ) : (
-                '📷'
+                <User className="w-16 h-16 text-muted-foreground" />
               )}
             </div>
 
             {/* Content */}
             <div className="p-8">
-              <h1 className="text-4xl font-bold text-foreground mb-2">{crew.name}</h1>
-              <p className="text-primary text-lg font-medium mb-6">{crew.role}</p>
+              <h1 className="text-4xl font-bold text-foreground mb-2">
+                {crew.name}
+              </h1>
+              <p className="text-primary text-lg font-medium mb-6">
+                {crew.role}
+              </p>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8 pb-8 border-b border-border">
                 <div>
-                  <p className="text-muted-foreground text-sm">Experience Level</p>
-                  <p className="text-lg font-medium text-foreground">{crew.experience}</p>
+                  <p className="text-muted-foreground text-sm">
+                    Experience Level
+                  </p>
+                  <p className="text-lg font-medium text-foreground">
+                    {crew.experience}
+                  </p>
                 </div>
                 <div>
                   <p className="text-muted-foreground text-sm">Location</p>
-                  <p className="text-lg font-medium text-foreground">{crew.city}</p>
+                  <p className="text-lg font-medium text-foreground">
+                    {crew.city}
+                  </p>
                 </div>
                 <div>
                   <p className="text-muted-foreground text-sm">Travel Range</p>
-                  <p className="text-lg font-medium text-foreground">{crew.travelRange} km</p>
+                  <p className="text-lg font-medium text-foreground">
+                    {crew.travelRange}
+                  </p>
                 </div>
                 <div>
                   <p className="text-muted-foreground text-sm">Rate Per Day</p>
-                  <p className="text-2xl font-bold text-primary">{formatCurrency(crew.ratePerDay)}</p>
+                  <p className="text-2xl font-bold text-primary">
+                    {formatCurrency(crew.ratePerDay)}
+                  </p>
                 </div>
               </div>
 
               {crew.bio && (
                 <div className="mb-8">
-                  <h2 className="text-lg font-bold text-foreground mb-3">About</h2>
+                  <h2 className="text-lg font-bold text-foreground mb-3">
+                    About
+                  </h2>
                   <p className="text-muted-foreground">{crew.bio}</p>
                 </div>
               )}
@@ -208,33 +243,94 @@ export default function CrewProfilePage({ params }) {
 
               <div className="mb-8">
                 <p className="text-muted-foreground text-sm">Member Since</p>
-                <p className="text-lg font-medium text-foreground">{formatDate(crew.createdAt)}</p>
+                <p className="text-lg font-medium text-foreground">
+                  {formatDate(crew.createdAt)}
+                </p>
               </div>
 
               {/* Booking Form */}
               {!showBookingForm ? (
                 <Button
                   onClick={() => setShowBookingForm(true)}
-                  className="w-full bg-primary text-primary-foreground hover:bg-primary/90 font-medium py-3 text-lg"
+                  className="bg-primary text-primary-foreground hover:bg-primary/90 font-medium px-8 py-3 text-lg"
                 >
                   Request Booking
                 </Button>
               ) : (
-                <form onSubmit={handleSubmitBooking} className="space-y-4 p-6 bg-muted rounded-lg">
-                  <h3 className="font-bold text-foreground">Request a Booking</h3>
+                <form
+                  onSubmit={handleSubmitBooking}
+                  className="space-y-4 p-6 bg-muted rounded-lg"
+                >
+                  <h3 className="font-bold text-foreground">
+                    Request a Booking
+                  </h3>
 
                   <div>
                     <label className="block text-sm font-medium text-foreground mb-2">
                       Event Date
                     </label>
-                    <Input
-                      type="date"
-                      name="date"
-                      value={bookingData.date}
-                      onChange={handleBookingChange}
-                      className="bg-card border border-border text-foreground"
-                      required
-                    />
+                    <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
+                      <PopoverTrigger asChild>
+                        <button
+                          type="button"
+                          className={`w-full flex items-center gap-2 px-3 py-2 rounded-md border text-sm transition-colors bg-card ${
+                            bookingData.date
+                              ? "text-foreground"
+                              : "text-muted-foreground"
+                          } border-border hover:border-primary focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background`}
+                        >
+                          <CalendarIcon className="h-4 w-4 shrink-0 text-primary" />
+                          <span className="flex-1 text-left">
+                            {bookingData.date
+                              ? new Date(
+                                  bookingData.date + "T00:00:00",
+                                ).toLocaleDateString("en-IN", {
+                                  day: "numeric",
+                                  month: "long",
+                                  year: "numeric",
+                                })
+                              : "Select event date"}
+                          </span>
+                        </button>
+                      </PopoverTrigger>
+                      <PopoverContent
+                        className="w-auto p-0 bg-card border border-border shadow-xl rounded-lg"
+                        align="start"
+                      >
+                        <Calendar
+                          mode="single"
+                          selected={
+                            bookingData.date
+                              ? new Date(bookingData.date + "T00:00:00")
+                              : undefined
+                          }
+                          onSelect={(date) => {
+                            if (date) {
+                              const yyyy = date.getFullYear();
+                              const mm = String(date.getMonth() + 1).padStart(
+                                2,
+                                "0",
+                              );
+                              const dd = String(date.getDate()).padStart(
+                                2,
+                                "0",
+                              );
+                              setBookingData((prev) => ({
+                                ...prev,
+                                date: `${yyyy}-${mm}-${dd}`,
+                              }));
+                            } else {
+                              setBookingData((prev) => ({ ...prev, date: "" }));
+                            }
+                            setCalendarOpen(false);
+                          }}
+                          disabled={(date) =>
+                            date < new Date(new Date().setHours(0, 0, 0, 0))
+                          }
+                          initialFocus
+                        />
+                      </PopoverContent>
+                    </Popover>
                   </div>
 
                   <div>
@@ -278,13 +374,13 @@ export default function CrewProfilePage({ params }) {
                       disabled={submitting}
                       className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90"
                     >
-                      {submitting ? 'Sending...' : 'Send Request'}
+                      {submitting ? "Sending..." : "Send Request"}
                     </Button>
                     <Button
                       type="button"
                       onClick={() => setShowBookingForm(false)}
                       variant="outline"
-                      className="flex-1 border-border text-foreground hover:bg-muted"
+                      className="flex-1 border-border text-foreground hover:bg-muted hover:text-foreground"
                     >
                       Cancel
                     </Button>

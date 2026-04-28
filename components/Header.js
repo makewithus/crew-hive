@@ -1,11 +1,11 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { useAuth } from '@/hooks/useAuth';
-import { Button } from '@/components/ui/button';
-import { USER_ROLES } from '@/utils/constants';
+import { useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/hooks/useAuth";
+import { Button } from "@/components/ui/button";
+import { USER_ROLES } from "@/utils/constants";
 
 export const Header = () => {
   const { currentUser, userRole, logout } = useAuth();
@@ -15,22 +15,22 @@ export const Header = () => {
   const handleLogout = async () => {
     const result = await logout();
     if (result.success) {
-      router.push('/');
+      router.push("/");
     }
   };
 
   const getNavLinks = () => {
     if (userRole === USER_ROLES.CREW) {
       return [
-        { href: '/crew/dashboard', label: 'Dashboard' },
-        { href: '/crew/requests', label: 'Requests' },
-        { href: '/crew/verify', label: 'Verify' },
+        { href: "/crew/dashboard", label: "Dashboard" },
+        { href: "/crew/requests", label: "Requests" },
+        { href: "/crew/verify", label: "Verify" },
       ];
     }
     if (userRole === USER_ROLES.ORGANIZER) {
       return [
-        { href: '/organizer/dashboard', label: 'Dashboard' },
-        { href: '/organizer/search', label: 'Search Crew' },
+        { href: "/organizer/dashboard", label: "Dashboard" },
+        { href: "/organizer/search", label: "Search Crew" },
       ];
     }
     return [];
@@ -70,7 +70,7 @@ export const Header = () => {
                 <Button
                   onClick={handleLogout}
                   variant="outline"
-                  className="border-border text-foreground hover:bg-muted"
+                  className="border-border text-foreground hover:bg-muted hover:text-foreground"
                 >
                   Logout
                 </Button>
@@ -89,8 +89,18 @@ export const Header = () => {
             onClick={() => setIsMenuOpen(!isMenuOpen)}
             className="md:hidden p-2 text-foreground hover:bg-muted rounded"
           >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+            <svg
+              className="w-6 h-6"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M4 6h16M4 12h16M4 18h16"
+              />
             </svg>
           </button>
         </div>
@@ -114,7 +124,7 @@ export const Header = () => {
                   handleLogout();
                   setIsMenuOpen(false);
                 }}
-                className="w-full text-left px-4 py-2 text-foreground hover:bg-muted rounded transition-colors"
+                className="w-full text-left px-4 py-2 text-foreground hover:bg-muted hover:text-foreground rounded transition-colors"
               >
                 Logout
               </button>

@@ -1,82 +1,82 @@
 // Application Constants
 
 export const USER_ROLES = {
-  CREW: 'crew',
-  ORGANIZER: 'organizer',
-  ADMIN: 'admin',
-  SUPER_ADMIN: 'super_admin',
+  CREW: "crew",
+  ORGANIZER: "organizer",
+  ADMIN: "admin",
+  SUPER_ADMIN: "super_admin",
 };
 
 export const CREW_STATUS = {
-  PENDING: 'pending',
-  APPROVED: 'approved',
-  REJECTED: 'rejected',
+  PENDING: "pending",
+  APPROVED: "approved",
+  REJECTED: "rejected",
 };
 
 export const BOOKING_STATUS = {
-  PENDING: 'pending',
-  ACCEPTED: 'accepted',
-  REJECTED: 'rejected',
-  COMPLETED: 'completed',
-  CANCELLED: 'cancelled',
+  PENDING: "pending",
+  ACCEPTED: "accepted",
+  REJECTED: "rejected",
+  COMPLETED: "completed",
+  CANCELLED: "cancelled",
 };
 
 export const CREW_ROLES = [
-  'Sound Engineer',
-  'Lighting Operator',
-  'LED Wall Tech',
-  'Stage Manager',
-  'Rigger',
-  'Cinematographer',
-  'Photographer',
-  'Assistant Director',
-  'Editor',
-  'Drone Pilot',
+  "Sound Engineer",
+  "Lighting Operator",
+  "LED Wall Tech",
+  "Stage Manager",
+  "Rigger",
+  "Cinematographer",
+  "Photographer",
+  "Assistant Director",
+  "Editor",
+  "Drone Pilot",
 ];
 
 export const EXPERIENCE_LEVELS = [
-  '0–2 years',
-  '3–5 years',
-  '5–10 years',
-  '10+ years',
+  "0–2 years",
+  "3–5 years",
+  "5–10 years",
+  "10+ years",
 ];
 
 export const AVAILABILITY_STATUSES = {
-  AVAILABLE: 'available',
-  UNAVAILABLE: 'unavailable',
+  AVAILABLE: "available",
+  UNAVAILABLE: "unavailable",
 };
 
 export const COLORS = {
-  PRIMARY: '#F5A623',
-  SECONDARY: '#0D0D0D',
-  SUCCESS: '#10B981',
-  ERROR: '#EF4444',
-  WARNING: '#F59E0B',
-  INFO: '#3B82F6',
-  AVAILABLE: '#10B981',
-  UNAVAILABLE: '#EF4444',
+  PRIMARY: "#F5A623",
+  SECONDARY: "#0D0D0D",
+  SUCCESS: "#10B981",
+  ERROR: "#EF4444",
+  WARNING: "#F59E0B",
+  INFO: "#3B82F6",
+  AVAILABLE: "#10B981",
+  UNAVAILABLE: "#EF4444",
 };
 
 export const BOOKING_PAGE_SIZE = 10;
 export const CREW_SEARCH_PAGE_SIZE = 20;
 
 export const ROUTE_PATHS = {
-  HOME: '/',
-  AUTH_PHONE: '/auth/phone',
-  AUTH_OTP: '/auth/verify-otp',
-  AUTH_ROLE: '/auth/role-selection',
-  CREW_SETUP: '/crew/setup',
-  CREW_DASHBOARD: '/crew/dashboard',
-  CREW_REQUESTS: '/crew/requests',
-  CREW_VERIFY: '/crew/verify',
-  ORGANIZER_SETUP: '/organizer/setup',
-  ORGANIZER_DASHBOARD: '/organizer/dashboard',
-  ORGANIZER_SEARCH: '/organizer/search',
-  ADMIN_DASHBOARD: '/admin/dashboard',
-  ADMIN_APPROVALS: '/admin/approvals',
-  SUPER_ADMIN_DASHBOARD: '/super-admin/dashboard',
-  SUPER_ADMIN_USERS: '/super-admin/users',
-  PENDING_APPROVAL: '/pending-approval',
+  HOME: "/",
+  AUTH_PHONE: "/auth/phone",
+  AUTH_OTP: "/auth/verify-otp",
+  AUTH_ROLE: "/auth/role-selection",
+  CREW_SETUP: "/crew/setup",
+  CREW_DASHBOARD: "/crew/dashboard",
+  CREW_REQUESTS: "/crew/requests",
+  CREW_VERIFY: "/crew/verify",
+  ORGANIZER_SETUP: "/organizer/setup",
+  ORGANIZER_DASHBOARD: "/organizer/dashboard",
+  ORGANIZER_SEARCH: "/organizer/search",
+  ADMIN_DASHBOARD: "/admin/dashboard",
+  ADMIN_APPROVALS: "/admin/approvals",
+  SUPER_ADMIN_DASHBOARD: "/super-admin/dashboard",
+  SUPER_ADMIN_USERS: "/super-admin/users",
+  PENDING_APPROVAL: "/pending-approval",
 };
 
 export default {

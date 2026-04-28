@@ -1,24 +1,24 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { useAuth } from '@/hooks/useAuth';
-import { subscribeToApprovedCrew } from '@/lib/firestore';
-import { Button } from '@/components/ui/button';
-import Header from '@/components/Header';
-import AuthGuard from '@/components/AuthGuard';
-import CrewCard from '@/components/CrewCard';
-import { CREW_ROLES } from '@/utils/constants';
-import { USER_ROLES } from '@/utils/constants';
+import { useState, useEffect } from "react";
+import { useAuth } from "@/hooks/useAuth";
+import { subscribeToApprovedCrew } from "@/lib/firestore";
+import { Button } from "@/components/ui/button";
+import Header from "@/components/Header";
+import AuthGuard from "@/components/AuthGuard";
+import CrewCard from "@/components/CrewCard";
+import { CREW_ROLES } from "@/utils/constants";
+import { USER_ROLES } from "@/utils/constants";
 
 export default function OrganizerSearchPage() {
   const { currentUser } = useAuth();
   const [crews, setCrew] = useState([]);
   const [filteredCrew, setFilteredCrew] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const [filters, setFilters] = useState({
-    role: '',
-    city: '',
+    role: "",
+    city: "",
     available: false,
   });
 
@@ -48,7 +48,9 @@ export default function OrganizerSearchPage() {
       filtered = filtered.filter((c) => c.role === filters.role);
     }
     if (filters.city) {
-      filtered = filtered.filter((c) => c.city.toLowerCase().includes(filters.city.toLowerCase()));
+      filtered = filtered.filter((c) =>
+        c.city.toLowerCase().includes(filters.city.toLowerCase()),
+      );
     }
     if (filters.available) {
       filtered = filtered.filter((c) => c.available);
@@ -61,7 +63,7 @@ export default function OrganizerSearchPage() {
     const { name, value, type, checked } = e.target;
     setFilters((prev) => ({
       ...prev,
-      [name]: type === 'checkbox' ? checked : value,
+      [name]: type === "checkbox" ? checked : value,
     }));
   };
 
@@ -86,7 +88,9 @@ export default function OrganizerSearchPage() {
         <div className="bg-card border-b border-border">
           <div className="max-w-7xl mx-auto px-4 py-8">
             <h1 className="text-3xl font-bold text-foreground">Search Crew</h1>
-            <p className="text-muted-foreground mt-2">Find qualified crew members for your projects</p>
+            <p className="text-muted-foreground mt-2">
+              Find qualified crew members for your projects
+            </p>
           </div>
         </div>
 
@@ -148,9 +152,11 @@ export default function OrganizerSearchPage() {
                 </label>
 
                 <Button
-                  onClick={() => setFilters({ role: '', city: '', available: false })}
+                  onClick={() =>
+                    setFilters({ role: "", city: "", available: false })
+                  }
                   variant="outline"
-                  className="w-full border-border text-foreground hover:bg-muted"
+                  className="w-full border-border text-foreground hover:bg-muted hover:text-foreground"
                 >
                   Reset Filters
                 </Button>
@@ -160,17 +166,23 @@ export default function OrganizerSearchPage() {
             {/* Results */}
             <div className="lg:col-span-3">
               <p className="text-muted-foreground mb-6">
-                Found <span className="font-bold text-foreground">{filteredCrew.length}</span> crew members
+                Found{" "}
+                <span className="font-bold text-foreground">
+                  {filteredCrew.length}
+                </span>{" "}
+                crew members
               </p>
 
               {filteredCrew.length === 0 ? (
                 <div className="text-center py-12">
-                  <p className="text-muted-foreground">No crew members match your filters</p>
+                  <p className="text-muted-foreground">
+                    No crew members match your filters
+                  </p>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {filteredCrew.map((member) => (
-                    <CrewCard key={member.uid} crew={member} />
+                    <CrewCard key={member.id || member.phone} crew={member} />
                   ))}
                 </div>
               )}

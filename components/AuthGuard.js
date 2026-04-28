@@ -1,14 +1,29 @@
-'use client';
+"use client";
 
-import { useEffect } from 'react';
-import { useRouter, usePathname } from 'next/navigation';
-import { useAuth } from '@/hooks/useAuth';
+import { useEffect } from "react";
+import { useRouter, usePathname } from "next/navigation";
+import { useAuth } from "@/hooks/useAuth";
 
 // Paths that don't require authentication
-const PUBLIC_PATHS = ['/', '/login', '/auth/phone', '/auth/verify-otp', '/auth/role-selection', '/crew/verify'];
+const PUBLIC_PATHS = [
+  "/",
+  "/login",
+  "/auth/phone",
+  "/auth/verify-otp",
+  "/auth/role-selection",
+  "/crew/verify",
+];
 
 export const AuthGuard = ({ children, requiredRole = null }) => {
-  const { currentUser, userRole, userApproved, isAdmin, isSuperAdmin, loading, isAuthenticated } = useAuth();
+  const {
+    currentUser,
+    userRole,
+    userApproved,
+    isAdmin,
+    isSuperAdmin,
+    loading,
+    isAuthenticated,
+  } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
 
@@ -17,7 +32,7 @@ export const AuthGuard = ({ children, requiredRole = null }) => {
 
     // Not authenticated → login
     if (!isAuthenticated || !currentUser) {
-      router.push('/login');
+      router.push("/login");
       return;
     }
 
@@ -25,19 +40,31 @@ export const AuthGuard = ({ children, requiredRole = null }) => {
     if (isAdmin) return;
 
     // Not approved crew → stay on login (they get a toast there)
-    if (userApproved === false && userRole === 'crew') {
-      router.push('/login');
+    if (userApproved === false && userRole === "crew") {
+      router.push("/login");
       return;
     }
 
     // Role mismatch → redirect to the correct dashboard
     if (requiredRole && userRole && userRole !== requiredRole) {
-      if (userRole === 'crew') router.push('/crew/dashboard');
-      else if (userRole === 'organizer' || userRole === 'employer') router.push('/organizer/dashboard');
-      else if (userRole === 'admin') router.push('/admin');
+      if (userRole === "crew") router.push("/crew/dashboard");
+      else if (userRole === "organizer" || userRole === "employer")
+        router.push("/organizer/dashboard");
+      else if (userRole === "admin") router.push("/admin");
       return;
     }
-  }, [loading, isAuthenticated, currentUser, userRole, userApproved, isAdmin, isSuperAdmin, requiredRole, router, pathname]);
+  }, [
+    loading,
+    isAuthenticated,
+    currentUser,
+    userRole,
+    userApproved,
+    isAdmin,
+    isSuperAdmin,
+    requiredRole,
+    router,
+    pathname,
+  ]);
 
   if (loading) {
     return (
@@ -51,7 +78,7 @@ export const AuthGuard = ({ children, requiredRole = null }) => {
   }
 
   if (!isAuthenticated) return null;
-  if (!isAdmin && userApproved === false && userRole === 'crew') return null;
+  if (!isAdmin && userApproved === false && userRole === "crew") return null;
   if (requiredRole && userRole !== requiredRole && !isAdmin) return null;
 
   return children;

@@ -78,7 +78,10 @@ export default function SuperAdminUsersPage() {
         const token = await currentUser.getIdToken();
         await fetch("/api/admin/approve", {
           method: "POST",
-          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
           body: JSON.stringify({
             id: uid,
             role: userRole || "crew",
@@ -100,11 +103,11 @@ export default function SuperAdminUsersPage() {
     const matchSearch =
       !search ||
       u.phone?.includes(search) ||
-      u.phoneNumber?.includes(search) ||
+      u.id?.includes(search) ||
       u.name?.toLowerCase().includes(search.toLowerCase()) ||
-      u.data?.name?.toLowerCase().includes(search.toLowerCase()) ||
       u.company?.toLowerCase().includes(search.toLowerCase()) ||
-      u.data?.company?.toLowerCase().includes(search.toLowerCase());
+      u.city?.toLowerCase().includes(search.toLowerCase()) ||
+      u.crewRole?.toLowerCase().includes(search.toLowerCase());
     const matchFilter =
       filter === "all" ||
       (filter === "pending" && u.approved === false) ||
@@ -169,7 +172,9 @@ export default function SuperAdminUsersPage() {
         {fetchError && (
           <div className="mb-4 p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-sm">
             Error loading users: {fetchError}{" "}
-            <button onClick={fetchUsers} className="underline ml-2">Retry</button>
+            <button onClick={fetchUsers} className="underline ml-2">
+              Retry
+            </button>
           </div>
         )}
         {/* Header */}
@@ -274,10 +279,10 @@ export default function SuperAdminUsersPage() {
                   </tr>
                 ) : (
                   filtered.map((u) => {
-                    const name = u.name || u.data?.name || u.data?.company || u.company || '—';
-                    const phone = u.phone || u.phoneNumber || u.id;
-                    const crewRole = u.crewRole || u.data?.crewRole || u.role_title;
-                    const city = u.city || u.data?.city;
+                    const name = u.name || u.company || "—";
+                    const phone = u.phone || u.phoneNumber || `+${u.id}`;
+                    const crewRole = u.crewRole;
+                    const city = u.city;
                     const roleInfo = ROLE_LABELS[u.role] || {
                       label: u.role || "Unknown",
                       color: "text-muted-foreground bg-muted border-border",
@@ -310,10 +315,15 @@ export default function SuperAdminUsersPage() {
                               <p className="text-sm font-semibold text-foreground">
                                 {name}
                               </p>
+                              {u.company && u.company !== name && (
+                                <p className="text-xs text-muted-foreground">
+                                  {u.company}
+                                </p>
+                              )}
                               <p className="text-xs text-muted-foreground">
                                 {phone}
                               </p>
-                              {u.data?.city && (
+                              {city && (
                                 <p className="text-xs text-muted-foreground">
                                   {city}
                                 </p>
@@ -329,9 +339,18 @@ export default function SuperAdminUsersPage() {
                           >
                             {roleInfo.label}
                           </span>
-                          {crewRole && (
-                            <p className="text-xs text-muted-foreground mt-1">
-                              {crewRole}
+                          {crewRole &&
+                            crewRole !== u.role &&
+                            crewRole !== "organizer" &&
+                            crewRole !== "crew" && (
+                              <p className="text-xs text-muted-foreground mt-1">
+                                {crewRole}
+                              </p>
+                            )}
+                          {u.experience && (
+                            <p className="text-xs text-muted-foreground mt-0.5">
+                              {u.experience}
+                              {u.ratePerDay ? ` · ₹${u.ratePerDay}/day` : ""}
                             </p>
                           )}
                         </td>
