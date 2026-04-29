@@ -25,9 +25,8 @@ const buildSuperAdminIds = () => {
   return ids;
 };
 
-const SUPER_ADMIN_IDS = buildSuperAdminIds();
-
 export async function POST(request) {
+  const SUPER_ADMIN_IDS = buildSuperAdminIds();
   try {
     const body = await request.json();
     const { phone, checkOnly = false } = body;

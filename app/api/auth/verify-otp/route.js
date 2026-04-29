@@ -20,9 +20,8 @@ const buildSuperAdminIds = () => {
   }
   return ids;
 };
-const SUPER_ADMIN_IDS = buildSuperAdminIds();
-
 export async function POST(request) {
+  const SUPER_ADMIN_IDS = buildSuperAdminIds();
   try {
     const { phone, code } = await request.json();
     if (!phone || !code) {
