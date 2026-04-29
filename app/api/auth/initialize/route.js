@@ -125,9 +125,9 @@ export async function POST(request) {
 
     return NextResponse.json({ role, approved, exists: true, isNew: false });
   } catch (error) {
-    console.error("[auth/initialize] Error:", error);
+    console.error("[auth/initialize] Error:", error.message, error.stack);
     return NextResponse.json(
-      { error: "Internal server error" },
+      { error: "Internal server error", detail: error.message },
       { status: 500 },
     );
   }

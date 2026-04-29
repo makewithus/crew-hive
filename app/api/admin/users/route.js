@@ -31,16 +31,22 @@ export async function GET(request) {
       );
     }
 
-    // Must have super_admin claim or be the admin phone
+    // Must have super_admin claim OR phone matches ADMIN_PHONES / SUPER_ADMIN_PHONE
+    // decoded.phone       = claim set by custom token (dev mode)
+    // decoded.phone_number = set by Firebase Phone Auth (production)
+    const decodedPhone = (decoded.phone_number || decoded.phone || "").replace(/\D/g, "");
+    const superAdminPhones = new Set([
+      ...(process.env.SUPER_ADMIN_PHONE ? [String(process.env.SUPER_ADMIN_PHONE).replace(/\D/g, "")] : []),
+      ...(process.env.ADMIN_PHONES || "").split(",").map((p) => p.replace(/\D/g, "").trim()).filter(Boolean),
+      ...(process.env.NEXT_PUBLIC_ADMIN_PHONES || "").split(",").map((p) => p.replace(/\D/g, "").trim()).filter(Boolean),
+    ]);
+
     const isSuperAdmin =
       decoded.role === "super_admin" ||
-      decoded.phone === "+1234567890" ||
-      (process.env.ADMIN_PHONES || "")
-        .split(",")
-        .map((p) => p.replace(/\D/g, "").trim())
-        .includes(String(decoded.uid).replace(/\D/g, ""));
+      (decodedPhone && superAdminPhones.has(decodedPhone));
 
     if (!isSuperAdmin) {
+      console.error("[API/admin/users] Forbidden. uid:", decoded.uid, "phone:", decodedPhone, "role:", decoded.role);
       return NextResponse.json(
         { success: false, error: "Forbidden" },
         { status: 403 },

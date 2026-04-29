@@ -30,13 +30,16 @@ export async function GET(request) {
       );
     }
 
+    const decodedPhone = (decoded.phone_number || decoded.phone || "").replace(/\D/g, "");
+    const superAdminPhones = new Set([
+      ...(process.env.SUPER_ADMIN_PHONE ? [String(process.env.SUPER_ADMIN_PHONE).replace(/\D/g, "")] : []),
+      ...(process.env.ADMIN_PHONES || "").split(",").map((p) => p.replace(/\D/g, "").trim()).filter(Boolean),
+      ...(process.env.NEXT_PUBLIC_ADMIN_PHONES || "").split(",").map((p) => p.replace(/\D/g, "").trim()).filter(Boolean),
+    ]);
+
     const isSuperAdmin =
       decoded.role === "super_admin" ||
-      decoded.phone === "+1234567890" ||
-      (process.env.ADMIN_PHONES || "")
-        .split(",")
-        .map((p) => p.replace(/\D/g, "").trim())
-        .includes(String(decoded.uid).replace(/\D/g, ""));
+      (decodedPhone && superAdminPhones.has(decodedPhone));
 
     if (!isSuperAdmin) {
       return NextResponse.json(
