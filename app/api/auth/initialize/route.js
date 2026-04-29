@@ -3,11 +3,29 @@ import { adminDb } from "@/lib/firebase-admin";
 
 const phoneToDocId = (phone) => String(phone).replace(/\D/g, "");
 
-// The ONLY super admin is defined by this env var.
-// Any role stored in Firestore claiming super_admin for another number is treated as corruption.
-const SUPER_ADMIN_ID = process.env.SUPER_ADMIN_PHONE
-  ? phoneToDocId(process.env.SUPER_ADMIN_PHONE)
-  : null;
+// Build the full set of super-admin doc IDs from env vars
+// Supports both SUPER_ADMIN_PHONE and ADMIN_PHONES (comma-separated)
+const buildSuperAdminIds = () => {
+  const ids = new Set();
+  if (process.env.SUPER_ADMIN_PHONE) {
+    ids.add(phoneToDocId(process.env.SUPER_ADMIN_PHONE));
+  }
+  if (process.env.ADMIN_PHONES) {
+    process.env.ADMIN_PHONES.split(",").forEach((p) => {
+      const d = phoneToDocId(p.trim());
+      if (d) ids.add(d);
+    });
+  }
+  if (process.env.NEXT_PUBLIC_ADMIN_PHONES) {
+    process.env.NEXT_PUBLIC_ADMIN_PHONES.split(",").forEach((p) => {
+      const d = phoneToDocId(p.trim());
+      if (d) ids.add(d);
+    });
+  }
+  return ids;
+};
+
+const SUPER_ADMIN_IDS = buildSuperAdminIds();
 
 export async function POST(request) {
   try {
@@ -19,8 +37,8 @@ export async function POST(request) {
     const id = phoneToDocId(phone);
     const db = adminDb();
 
-    // ── Super admin: ONLY if phone matches SUPER_ADMIN_PHONE env var ──────────
-    if (SUPER_ADMIN_ID && id === SUPER_ADMIN_ID) {
+    // ── Super admin: any number listed in SUPER_ADMIN_PHONE or ADMIN_PHONES ──
+    if (SUPER_ADMIN_IDS.has(id)) {
       if (!checkOnly) {
         const ts = new Date().toISOString();
         await db
@@ -88,17 +106,17 @@ export async function POST(request) {
     }
 
     const rawRole = userData.role ?? null;
-    // Normalize role. Also guard against corrupted super_admin for non-super-admin phones.
+    // Normalize role. Guard against corrupted super_admin for non-super-admin phones.
     let role = rawRole === "employer" ? "organizer" : rawRole;
-    if (role === "super_admin") {
-      // Corrupted — this number is not the super admin phone. Treat as no role.
+    if (role === "super_admin" && !SUPER_ADMIN_IDS.has(id)) {
+      // Corrupted — this number is not a super admin phone. Treat as no role.
       role = null;
     }
 
     const approved = role === "organizer" ? true : userData.approved === true;
 
     // Full init: fix any corruption in the users doc
-    if (!checkOnly && rawRole === "super_admin") {
+    if (!checkOnly && rawRole === "super_admin" && !SUPER_ADMIN_IDS.has(id)) {
       await userRef.set(
         { role: null, approved: false, updatedAt: new Date().toISOString() },
         { merge: true },

@@ -8,6 +8,20 @@ import { adminDb, adminAuth } from "@/lib/firebase-admin";
 
 const phoneToDocId = (phone) => String(phone).replace(/\D/g, "");
 
+// Same logic as initialize route — all env-listed numbers are super admins
+const buildSuperAdminIds = () => {
+  const ids = new Set();
+  if (process.env.SUPER_ADMIN_PHONE) ids.add(phoneToDocId(process.env.SUPER_ADMIN_PHONE));
+  if (process.env.ADMIN_PHONES) {
+    process.env.ADMIN_PHONES.split(",").forEach((p) => { const d = phoneToDocId(p.trim()); if (d) ids.add(d); });
+  }
+  if (process.env.NEXT_PUBLIC_ADMIN_PHONES) {
+    process.env.NEXT_PUBLIC_ADMIN_PHONES.split(",").forEach((p) => { const d = phoneToDocId(p.trim()); if (d) ids.add(d); });
+  }
+  return ids;
+};
+const SUPER_ADMIN_IDS = buildSuperAdminIds();
+
 export async function POST(request) {
   try {
     const { phone, code } = await request.json();
@@ -27,12 +41,8 @@ export async function POST(request) {
       process.env.NODE_ENV === "development" &&
       String(code).trim() === "123456"
     ) {
-      const superAdminId = process.env.SUPER_ADMIN_PHONE
-        ? String(process.env.SUPER_ADMIN_PHONE).replace(/\D/g, "")
-        : null;
-
-      // Super admin check first
-      if (superAdminId && id === superAdminId) {
+      // Super admin check first — any number in SUPER_ADMIN_IDS
+      if (SUPER_ADMIN_IDS.has(id)) {
         const customToken = await adminAuth().createCustomToken(id, {
           role: "super_admin",
           approved: true,
@@ -86,7 +96,7 @@ export async function POST(request) {
       const userData = userSnap.data();
       const rawRole = userData.role ?? null;
       let role = rawRole === "employer" ? "organizer" : rawRole;
-      if (role === "super_admin") role = null; // guard against corrupted data
+      if (role === "super_admin" && !SUPER_ADMIN_IDS.has(id)) role = null; // guard against corrupted data
       const approved = userData.approved === true;
       const claims = { phone: `+${id}` };
       if (role) claims.role = role;
