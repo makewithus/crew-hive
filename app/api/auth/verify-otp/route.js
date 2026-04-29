@@ -35,10 +35,10 @@ export async function POST(request) {
     const id = phoneToDocId(phone);
     const db = adminDb();
 
-    // ── DEV MODE SHORTCUT ──────────────────────────────────────────────────────
-    // In development, code 123456 works for any registered user — no SMS needed.
+    // ── DEV/LOCAL MODE SHORTCUT ──────────────────────────────────────────────
+    // In development OR when LOCAL_AUTH_BYPASS=true, code 123456 bypasses Firebase SMS.
     if (
-      process.env.NODE_ENV === "development" &&
+      (process.env.NODE_ENV === "development" || process.env.LOCAL_AUTH_BYPASS === "true") &&
       String(code).trim() === "123456"
     ) {
       // Super admin check first — any number in SUPER_ADMIN_IDS

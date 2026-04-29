@@ -15,6 +15,12 @@ const COUNTRY_CODES = [
   { code: "+61", country: "Australia", flag: "🇦🇺" },
 ];
 
+// Numbers trusted as super admins client-side (fallback when server env vars not set)
+const clientSuperAdminNumbers = (process.env.NEXT_PUBLIC_ADMIN_PHONES || "")
+  .split(",")
+  .map((p) => p.trim().replace(/\D/g, ""))
+  .filter(Boolean);
+
 export default function LoginPage() {
   const router = useRouter();
   const [step, setStep] = useState("phone");
@@ -93,9 +99,10 @@ export default function LoginPage() {
       return;
     }
     setStep("otp");
-    // In dev mode, remind user to use the test code
-    const devHint =
-      process.env.NODE_ENV === "development" ? " (dev: use 123456)" : "";
+    // Show hint on localhost (next dev or next start locally)
+    const isLocal = typeof window !== "undefined" &&
+      (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1");
+    const devHint = isLocal ? " (use 123456)" : "";
     showToast("info", `OTP sent to ${countryCode} ${digits}${devHint}`);
   };
 
@@ -131,8 +138,11 @@ export default function LoginPage() {
             );
 
       const role = userData.role === "employer" ? "organizer" : userData.role;
+      // Fallback: if server didn't recognise the role but number is in NEXT_PUBLIC_ADMIN_PHONES, treat as super_admin
+      const phoneDigits = (verifyResult.phone || verifyResult.user?.phoneNumber || "").replace(/\D/g, "");
+      const isSuperAdminPhone = clientSuperAdminNumbers.includes(phoneDigits);
 
-      if (role === "super_admin") {
+      if (role === "super_admin" || isSuperAdminPhone) {
         router.replace("/super-admin/dashboard");
       } else if (role === "crew") {
         if (!userData.approved) {
@@ -165,6 +175,13 @@ export default function LoginPage() {
   const handleBack = () => {
     setStep("phone");
     setOtp("");
+    // Clean up reCAPTCHA so it can be re-rendered fresh on next OTP request
+    if (typeof window !== "undefined") {
+      try { window._recaptchaVerifier?.clear(); } catch (_) {}
+      window._recaptchaVerifier = null;
+      const el = document.getElementById("recaptcha-container");
+      if (el) el.innerHTML = "";
+    }
   };
 
   return (
@@ -336,7 +353,14 @@ export default function LoginPage() {
                 </button>
               </form>
               <button
-                onClick={handleBack}
+                onClick={async () => {
+                  setOtp("");
+                  setLoading(true);
+                  const result = await sendOtp(fullPhone);
+                  setLoading(false);
+                  showToast(result.success ? "info" : "error",
+                    result.success ? `OTP resent to ${countryCode} ${phone}` : result.error);
+                }}
                 disabled={loading}
                 className="w-full text-zinc-500 hover:text-zinc-300 text-xs mt-4 transition-colors disabled:opacity-50"
               >
