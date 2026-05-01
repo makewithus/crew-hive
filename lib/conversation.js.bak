@@ -293,7 +293,7 @@ const crewThankyouMsg = () => {
 };
 
 const organizerThankyouMsg = () => {
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://crew-hive.vercel.app";
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://crew-hive-one.vercel.app";
   return buildText(
     `🎉 *Welcome to CrewHive, Organizer!*\n\n` +
       `Your organizer profile is ready. You can now log in and start finding professional crew.\n\n` +
@@ -457,7 +457,7 @@ export const handleMessage = async ({ userId, message }) => {
       if (step === STEPS.CREW_COMPLETE || step === STEPS.EMP_COMPLETE) {
         if (userState.approved) {
           const appUrl =
-            process.env.NEXT_PUBLIC_APP_URL || "https://crew-hive.vercel.app";
+            process.env.NEXT_PUBLIC_APP_URL || "https://crew-hive-one.vercel.app";
           return buildText(
             `👋 Welcome back to *CrewHive!*\n\nYour profile is live ✅\n\n🔗 Login here: ${appUrl}\n\nType *restart* to start over.`,
             step,
@@ -470,7 +470,7 @@ export const handleMessage = async ({ userId, message }) => {
           );
         }
         // organizer (EMP_COMPLETE) — auto-approved, should always have approved=true
-        const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://crew-hive.vercel.app";
+        const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://crew-hive-one.vercel.app";
         return buildText(
           `👋 Welcome back!\n\nYour organizer profile is ready.\n\n🔗 Login: ${appUrl}\n\nType *restart* to start fresh.`,
           step,
@@ -902,7 +902,7 @@ export const handleMessage = async ({ userId, message }) => {
     if (step === STEPS.CREW_COMPLETE || step === STEPS.EMP_COMPLETE) {
       if (userState.approved) {
         const appUrl =
-          process.env.NEXT_PUBLIC_APP_URL || "https://crew-hive.vercel.app";
+          process.env.NEXT_PUBLIC_APP_URL || "https://crew-hive-one.vercel.app";
         return buildText(
           `✅ Your profile is already live!\n\n🔗 Login: ${appUrl}\n\nType *restart* to start over.`,
           step,
@@ -914,7 +914,7 @@ export const handleMessage = async ({ userId, message }) => {
           step,
         );
       }
-      const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://crew-hive.vercel.app";
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://crew-hive-one.vercel.app";
       return buildText(
         `✅ Your organizer profile is ready!\n\n🔗 Login: ${appUrl}\n\nType *restart* to start over.`,
         step,
@@ -1130,7 +1130,7 @@ const resumeStep = async (step, userState, userId) => {
     case STEPS.EMP_COMPLETE: {
       if (userState?.approved) {
         const appUrl =
-          process.env.NEXT_PUBLIC_APP_URL || "https://crew-hive.vercel.app";
+          process.env.NEXT_PUBLIC_APP_URL || "https://crew-hive-one.vercel.app";
         return buildText(
           `✅ Your profile is approved!\n\n🔗 Login: ${appUrl}`,
           step,
@@ -1155,7 +1155,7 @@ const resumeStep = async (step, userState, userId) => {
  */
 export const buildApprovalMessage = (role) => {
   const appUrl =
-    process.env.NEXT_PUBLIC_APP_URL || "https://crew-hive.vercel.app";
+    process.env.NEXT_PUBLIC_APP_URL || "https://crew-hive-one.vercel.app";
   return buildText(
     `🎉 *Congratulations! Your CrewHive profile has been approved!*\n\n` +
       `You are now visible to organizers looking for crew in Kerala.\n\n` +

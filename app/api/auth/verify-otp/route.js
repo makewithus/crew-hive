@@ -86,11 +86,18 @@ export async function POST(request) {
 
       // Crew / other — check users collection
       const userSnap = await db.collection("users").doc(id).get();
+      // New user (not yet in Firestore) — still issue a token so web signup can proceed
       if (!userSnap.exists) {
-        return NextResponse.json(
-          { error: "Number not found. Register via WhatsApp first." },
-          { status: 404 },
-        );
+        const customToken = await adminAuth().createCustomToken(id, {
+          phone: `+${id}`,
+        });
+        return NextResponse.json({
+          success: true,
+          customToken,
+          role: null,
+          approved: false,
+          isNewUser: true,
+        });
       }
       const userData = userSnap.data();
       const rawRole = userData.role ?? null;

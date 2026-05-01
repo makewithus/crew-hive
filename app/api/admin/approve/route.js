@@ -46,7 +46,13 @@ export async function POST(request) {
       );
 
     // ── 2. Update the users collection ─────────────────────────────────────
-    await db.collection("users").doc(id).update({ approved, updatedAt: ts });
+    const isOrganizer = role === "organizer" || role === "employer";
+    const approvedStep = isOrganizer ? "emp_complete" : "crew_complete";
+    await db.collection("users").doc(id).update({
+      approved,
+      updatedAt: ts,
+      ...(approved ? { step: approvedStep } : {}),
+    });
 
     // ── 3. Send WhatsApp notification ───────────────────────────────────────
     if (approved) {

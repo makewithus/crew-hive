@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import Link from "next/link";
+import SignUpModal from "@/components/SignUpModal";
 import {
   MessageCircle,
   ShieldCheck,
@@ -14,12 +15,14 @@ import {
   Crown,
   Users,
   Check as CheckIcon,
+  UserPlus,
 } from "lucide-react";
 
 export default function Home() {
   const { currentUser, userRole, isSuperAdmin, userApproved, loading } =
     useAuth();
   const router = useRouter();
+  const [signUpOpen, setSignUpOpen] = useState(false);
 
   useEffect(() => {
     if (loading || !currentUser) return;
@@ -61,8 +64,15 @@ export default function Home() {
             <span className="text-xl font-bold text-foreground">CrewHive</span>
           </div>
           <div className="flex items-center gap-3">
+            <button
+              onClick={() => setSignUpOpen(true)}
+              className="flex items-center gap-2 bg-card border border-border text-foreground text-sm font-semibold px-4 py-2 rounded-xl hover:border-primary/50 hover:bg-primary/5 transition-all"
+            >
+              <UserPlus className="w-4 h-4" />
+              Sign Up
+            </button>
             <Link
-              href="/auth/phone"
+              href="/login"
               className="flex items-center gap-2 bg-primary text-primary-foreground text-sm font-semibold px-4 py-2 rounded-xl hover:bg-primary/90 transition-all shadow-lg shadow-primary/25"
             >
               Sign In
@@ -98,13 +108,20 @@ export default function Home() {
         </p>
 
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
+          <button
+            onClick={() => setSignUpOpen(true)}
+            className="group inline-flex items-center justify-center gap-2.5 bg-primary text-primary-foreground font-bold px-8 py-4 rounded-2xl hover:bg-primary/90 transition-all shadow-xl shadow-primary/30 text-base"
+          >
+            <UserPlus className="w-5 h-5" />
+            <span>Sign Up Free</span>
+          </button>
           <Link
             href="/login"
-            className="group inline-flex items-center justify-center gap-2.5 bg-primary text-primary-foreground font-bold px-8 py-4 rounded-2xl hover:bg-primary/90 transition-all shadow-xl shadow-primary/30 text-base"
+            className="inline-flex items-center justify-center gap-2.5 bg-card border border-border text-foreground font-semibold px-8 py-4 rounded-2xl hover:border-primary/50 hover:bg-primary/5 transition-all text-base"
           >
             <span>Sign In with Phone</span>
             <svg
-              className="w-5 h-5 group-hover:translate-x-1 transition-transform"
+              className="w-5 h-5"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -117,15 +134,39 @@ export default function Home() {
               />
             </svg>
           </Link>
-          <a
-            href="https://wa.me/918139002826?text=Hi"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center justify-center gap-2 bg-card border border-border text-foreground font-semibold px-8 py-4 rounded-2xl hover:border-primary/50 hover:bg-primary/5 transition-all text-base"
-          >
-            <MessageCircle className="w-5 h-5 text-green-400" />
-            Register on WhatsApp
-          </a>
+        </div>
+      </section>
+
+      {/* ── Sign Up CTA ── */}
+      <section className="relative z-10 max-w-6xl mx-auto px-6 py-10">
+        <div className="rounded-2xl border border-primary/20 bg-primary/5 px-8 py-10 text-center">
+          <div className="inline-flex items-center gap-2 bg-primary/10 border border-primary/20 rounded-full px-4 py-1.5 mb-5">
+            <UserPlus className="w-3.5 h-3.5 text-primary" />
+            <span className="text-primary text-xs font-semibold tracking-wide uppercase">Now on Web</span>
+          </div>
+          <h2 className="text-2xl sm:text-3xl font-bold text-foreground mb-3">
+            Skip WhatsApp — Sign Up Directly
+          </h2>
+          <p className="text-muted-foreground max-w-xl mx-auto mb-8 text-sm leading-relaxed">
+            New to CrewHive? Create your crew or organizer profile right here on the web — no WhatsApp needed.
+            Verify your phone with OTP and get started in minutes.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <button
+              onClick={() => setSignUpOpen(true)}
+              className="inline-flex items-center justify-center gap-2.5 bg-primary text-primary-foreground font-bold px-8 py-3.5 rounded-2xl hover:bg-primary/90 transition-all shadow-lg shadow-primary/25 text-sm"
+            >
+              <Film className="w-4 h-4" />
+              Join as Crew
+            </button>
+            <button
+              onClick={() => setSignUpOpen(true)}
+              className="inline-flex items-center justify-center gap-2.5 bg-card border border-border text-foreground font-semibold px-8 py-3.5 rounded-2xl hover:border-purple-500/50 hover:bg-purple-500/5 transition-all text-sm"
+            >
+              <ClipboardList className="w-4 h-4 text-purple-400" />
+              Join as Organizer
+            </button>
+          </div>
         </div>
       </section>
 
@@ -314,6 +355,8 @@ export default function Home() {
           </div>
         </div>
       </section>
+
+      <SignUpModal open={signUpOpen} onClose={() => setSignUpOpen(false)} />
 
       {/* ── Footer ── */}
       <footer className="relative z-10 border-t border-border bg-card/30">

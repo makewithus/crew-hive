@@ -3,7 +3,7 @@
  * Wipes: users/{phone}, crew/{phone}, employers/{phone}, all _webhook_dedup docs for that number.
  *
  * Usage:
- *   curl -X POST https://crew-hive.vercel.app/api/dev/reset-user \
+ *   curl -X POST https://crew-hive-one.vercel.app/api/dev/reset-user \
  *     -H "Content-Type: application/json" \
  *     -d '{"phone": "918265940243"}'
  */
