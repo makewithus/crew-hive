@@ -179,8 +179,14 @@ export default function LoginPage() {
     if (typeof window !== "undefined") {
       try { window._recaptchaVerifier?.clear(); } catch (_) {}
       window._recaptchaVerifier = null;
+      // Fully replace the node — just clearing innerHTML is not enough
       const el = document.getElementById("recaptcha-container");
-      if (el) el.innerHTML = "";
+      if (el && el.parentNode) {
+        const fresh = document.createElement("div");
+        fresh.id = "recaptcha-container";
+        fresh.style.cssText = el.style.cssText;
+        el.parentNode.replaceChild(fresh, el);
+      }
     }
   };
 
