@@ -7,9 +7,7 @@ const nextConfig = {
     unoptimized: true,
   },
   serverExternalPackages: ['firebase-admin'],
-  experimental: {
-    after: true,
-  },
+  experimental: {},
 }
 
 export default nextConfig

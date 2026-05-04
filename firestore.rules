@@ -10,12 +10,14 @@ service cloud.firestore {
 
     // Helper: caller's phone digits match docId
     // Supports both Firebase phone auth (phone_number claim) and
-    // custom token auth (uid == phoneDigits)
+    // custom token auth (uid == phoneDigits).
+    // NOTE: Firestore Rules has no string.replace() — compare directly.
+    // phone_number is always "+<digits>"; docId is digits only.
     function isOwner(docId) {
       return isAuth() && (
         request.auth.uid == docId ||
         (request.auth.token.phone_number != null &&
-         request.auth.token.phone_number.replace('+', '').replace('-', '') == docId)
+         request.auth.token.phone_number == ('+' + docId))
       );
     }
 
@@ -30,7 +32,7 @@ service cloud.firestore {
     // users collection: owner or admin can read/write
     match /users/{userId} {
       allow read: if isAuth() && (isOwner(userId) || isAdmin());
-      allow write: if isAdmin();
+      allow write: if isAuth() && (isOwner(userId) || isAdmin());
     }
 
     // crew collection: owner reads own, approved crew is readable by all auth users

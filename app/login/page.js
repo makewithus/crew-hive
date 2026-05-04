@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { sendOtp, verifyOtp, fetchUserRole, isValidPhone } from "@/lib/auth";
+import { sendOtp, verifyOtp, fetchUserRole, isValidPhone, prewarmRecaptcha } from "@/lib/auth";
 import { AlertTriangle, CheckCircle2, Info, X } from "lucide-react";
 
 const COUNTRY_CODES = [
@@ -35,6 +35,11 @@ export default function LoginPage() {
     const t = setTimeout(() => setToast(null), 4500);
     return () => clearTimeout(t);
   }, [toast]);
+
+  // Pre-warm reCAPTCHA on mount so it's ready when user clicks Send OTP
+  useEffect(() => {
+    prewarmRecaptcha();
+  }, []);
 
   const showToast = useCallback(
     (type, message) => setToast({ type, message }),
