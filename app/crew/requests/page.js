@@ -11,7 +11,7 @@ import { formatDate } from '@/utils/formatting';
 import { USER_ROLES } from '@/utils/constants';
 
 export default function CrewRequestsPage() {
-  const { currentUser } = useAuth();
+  const { currentUser, userPhone } = useAuth();
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -21,7 +21,7 @@ export default function CrewRequestsPage() {
   useEffect(() => {
     if (!currentUser) return;
     setLoading(true);
-    const unsubscribe = subscribeToCrewBookings(currentUser.uid, (result) => {
+    const unsubscribe = subscribeToCrewBookings(userPhone, (result) => {
       if (result.success) {
         setBookings(result.data);
       } else {
@@ -30,7 +30,7 @@ export default function CrewRequestsPage() {
       setLoading(false);
     });
     return () => unsubscribe();
-  }, [currentUser]);
+  }, [currentUser, userPhone]);
 
   const handleUpdateBooking = async (bookingId, newStatus) => {
     setUpdatingId(bookingId);
@@ -41,7 +41,7 @@ export default function CrewRequestsPage() {
       if (result.success) {
         // When crew accepts a job, mark them as unavailable
         if (newStatus === 'accepted') {
-          await updateCrewProfile(currentUser.uid, { available: false });
+          await updateCrewProfile(userPhone, { available: false });
         }
         // onSnapshot will update the bookings list automatically
       } else {
