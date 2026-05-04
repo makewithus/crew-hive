@@ -173,10 +173,10 @@ export async function POST(request) {
         return;
       }
       const messages = Array.isArray(result) ? result : [result];
-      for (const msg of messages) {
-        if (!msg?.text) continue;
-        await sendConversationMessage(capturedFrom, msg);
-      }
+      // Send all messages in PARALLEL — saves ~300-500ms per extra message
+      await Promise.all(
+        messages.filter(msg => msg?.text).map(msg => sendConversationMessage(capturedFrom, msg))
+      );
       logger.log("[Webhook] Reply(s) sent to:", capturedFrom, "| count:", messages.length);
     } catch (err) {
       logger.error("[Webhook] Background processing error:", err);
