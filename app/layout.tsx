@@ -1,11 +1,16 @@
 import type { Metadata } from 'next'
-import { Space_Grotesk } from 'next/font/google'
+import { Inter } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import { AuthProvider } from '@/hooks/useAuth'
 import { Toaster } from 'sonner'
 import './globals.css'
 
-const spaceGrotesk = Space_Grotesk({ subsets: ["latin"], variable: '--font-space-grotesk' });
+const inter = Inter({
+  subsets: ['latin'],
+  variable: '--font-inter',
+  display: 'swap',
+  weight: ['400', '500', '600', '700'],
+});
 
 export const metadata: Metadata = {
   title: 'CrewHive - Book Professional Crew',
@@ -36,7 +41,7 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en" className={`${spaceGrotesk.variable} dark`}>
+    <html lang="en" className={`${inter.variable} dark`}>
       <body className="font-sans antialiased">
         <AuthProvider>
           {children}
@@ -46,7 +51,7 @@ export default function RootLayout({
           position="top-center"
           richColors
           closeButton
-          toastOptions={{ style: { fontFamily: 'var(--font-space-grotesk)' } }}
+          toastOptions={{ style: { fontFamily: 'var(--font-inter), "Helvetica Neue", Helvetica, Arial, sans-serif' } }}
         />
         {process.env.NODE_ENV === 'production' && <Analytics />}
       </body>
