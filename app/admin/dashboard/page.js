@@ -111,11 +111,11 @@ export default function AdminDashboardPage() {
           {/* Quick Actions */}
           <div className="space-y-4">
             <h2 className="text-lg font-bold text-foreground">Management</h2>
-            <Link href="/admin/approvals" className="block">
-              <Button className="w-full bg-primary text-primary-foreground hover:bg-primary/90 py-6 text-lg">
+            <Button asChild className="w-full bg-primary text-primary-foreground hover:bg-primary/90 py-6 text-lg">
+              <Link href="/admin/approvals">
                 Review Pending Approvals ({stats.pending})
-              </Button>
-            </Link>
+              </Link>
+            </Button>
           </div>
         </div>
       </div>

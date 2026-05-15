@@ -76,11 +76,11 @@ export const Header = () => {
                 </Button>
               </>
             ) : (
-              <Link href="/auth/phone">
-                <Button className="bg-primary text-primary-foreground hover:bg-primary/90">
+              <Button asChild className="bg-primary text-primary-foreground hover:bg-primary/90">
+                <Link href="/auth/phone">
                   Sign In
-                </Button>
-              </Link>
+                </Link>
+              </Button>
             )}
           </div>
 

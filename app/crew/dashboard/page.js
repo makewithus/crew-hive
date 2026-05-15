@@ -161,14 +161,15 @@ export default function CrewDashboardPage() {
                 {crew?.experience ? ` · ${crew.experience}` : ""}
               </p>
             </div>
-            <Link href="/crew/setup">
-              <Button
-                variant="outline"
-                className="border-border text-foreground hover:bg-muted hover:text-foreground shrink-0"
-              >
+            <Button
+              asChild
+              variant="outline"
+              className="border-border text-foreground hover:bg-muted hover:text-foreground shrink-0"
+            >
+              <Link href="/crew/setup">
                 Edit Profile
-              </Button>
-            </Link>
+              </Link>
+            </Button>
           </div>
           {/* Availability + Completion */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
@@ -204,11 +205,11 @@ export default function CrewDashboardPage() {
               <p className="text-sm text-muted-foreground mt-2">
                 Complete your profile to get more bookings
               </p>
-              <Link href="/crew/setup">
-                <Button className="mt-4 w-full bg-primary text-primary-foreground hover:bg-primary/90">
+              <Button asChild className="mt-4 w-full bg-primary text-primary-foreground hover:bg-primary/90">
+                <Link href="/crew/setup">
                   Edit Profile
-                </Button>
-              </Link>
+                </Link>
+              </Button>
             </div>
           </div>
 
@@ -261,22 +262,24 @@ export default function CrewDashboardPage() {
           <div className="space-y-4">
             <h2 className="text-lg font-bold text-foreground">Quick Actions</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Link href="/crew/requests">
-                <Button
-                  variant="outline"
-                  className="w-full border-border text-foreground hover:bg-muted hover:text-foreground"
-                >
+              <Button
+                asChild
+                variant="outline"
+                className="w-full border-border text-foreground hover:bg-muted hover:text-foreground"
+              >
+                <Link href="/crew/requests">
                   View Requests ({stats.pending})
-                </Button>
-              </Link>
-              <Link href="/crew/verify">
-                <Button
-                  variant="outline"
-                  className="w-full border-border text-foreground hover:bg-muted hover:text-foreground"
-                >
+                </Link>
+              </Button>
+              <Button
+                asChild
+                variant="outline"
+                className="w-full border-border text-foreground hover:bg-muted hover:text-foreground"
+              >
+                <Link href="/crew/verify">
                   Verification
-                </Button>
-              </Link>
+                </Link>
+              </Button>
             </div>
           </div>
         </div>

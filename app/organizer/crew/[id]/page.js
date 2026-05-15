@@ -6,6 +6,7 @@ import {
   getCrewProfile,
   createBooking,
   getOrganizerProfile,
+  phoneToDocId,
 } from "@/lib/firestore";
 import { sendBookingNotificationToCrew } from "@/lib/booking-notify";
 import { Button } from "@/components/ui/button";
@@ -24,7 +25,7 @@ import { USER_ROLES } from "@/utils/constants";
 import Link from "next/link";
 
 export default function CrewProfilePage({ params }) {
-  const { currentUser } = useAuth();
+  const { currentUser, userPhone } = useAuth();
   const { id: crewId } = use(params);
   const [crew, setCrew] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -81,9 +82,14 @@ export default function CrewProfilePage({ params }) {
     setSubmitting(true);
 
     try {
+      const organizerDocId = phoneToDocId(
+        userPhone || currentUser.phoneNumber || currentUser.uid,
+      );
+
       const result = await createBooking({
         crewId,
-        organizerId: currentUser.uid,
+        organizerId: organizerDocId,
+        crewName: crew.name || "",
         date: bookingData.date,
         location: bookingData.location,
         notes: bookingData.notes,
@@ -94,7 +100,7 @@ export default function CrewProfilePage({ params }) {
         // Fetch organizer name for the notification message
         let organizerName = "An organizer";
         try {
-          const orgResult = await getOrganizerProfile(currentUser.uid);
+          const orgResult = await getOrganizerProfile(organizerDocId);
           if (orgResult.success && orgResult.data?.name) {
             organizerName = orgResult.data.name;
           }
@@ -103,12 +109,18 @@ export default function CrewProfilePage({ params }) {
         const jobDetails = `Date: ${bookingData.date} | Location: ${bookingData.location}${bookingData.notes ? ` | Notes: ${bookingData.notes}` : ""}`;
 
         // Notify crew via conversation engine — sets their chat to booking_response step
-        await sendBookingNotificationToCrew(
+        const notifyResult = await sendBookingNotificationToCrew(
           crewId,
           result.bookingId,
           organizerName,
           jobDetails,
         );
+        if (!notifyResult.success) {
+          setError(
+            `Booking was created, but crew notification failed: ${notifyResult.error}`,
+          );
+          return;
+        }
 
         alert("Booking request sent! The crew member has been notified.");
         setBookingData({ date: "", location: "", notes: "" });
@@ -144,11 +156,11 @@ export default function CrewProfilePage({ params }) {
         <div className="min-h-screen bg-background">
           <div className="max-w-4xl mx-auto px-4 py-12 text-center">
             <p className="text-red-700 text-lg">{error || "Crew not found"}</p>
-            <Link href="/organizer/search">
-              <Button className="mt-4 bg-primary text-primary-foreground hover:bg-primary/90">
+            <Button asChild className="mt-4 bg-primary text-primary-foreground hover:bg-primary/90">
+              <Link href="/organizer/search">
                 Back to Search
-              </Button>
-            </Link>
+              </Link>
+            </Button>
           </div>
         </div>
       </AuthGuard>

@@ -175,6 +175,24 @@
     font-size: max(16px, 1rem);
   }
 
+  a[href],
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  input[type="button"]:not(:disabled),
+  input[type="submit"]:not(:disabled),
+  input[type="reset"]:not(:disabled),
+  label[for],
+  summary {
+    cursor: pointer;
+  }
+
+  button:disabled,
+  input[type="button"]:disabled,
+  input[type="submit"]:disabled,
+  input[type="reset"]:disabled {
+    cursor: not-allowed;
+  }
+
   /* Secondary / caption / supporting text */
   small,
   .text-secondary,

@@ -29,11 +29,11 @@ export default function CrewVerifyPage() {
               portfolio validation are coming soon to help you build credibility
               on CrewHive.
             </p>
-            <Link href="/crew/dashboard">
-              <Button className="bg-primary text-primary-foreground hover:bg-primary/90">
+            <Button asChild className="bg-primary text-primary-foreground hover:bg-primary/90">
+              <Link href="/crew/dashboard">
                 Back to Dashboard
-              </Button>
-            </Link>
+              </Link>
+            </Button>
           </div>
         </div>
       </div>
