@@ -1,0 +1,114 @@
+{
+  "terms": {
+    "title": "Terms and Conditions",
+    "lastUpdated": "Effective Date: January 1, 2027 (Pre-launch Version)",
+    "intro": "Welcome to CrewHive. By accessing or using the CrewHive platform (via web, mobile web, or our WhatsApp onboarding service), you agree to be bound by these Terms and Conditions.",
+    "sections": [
+      {
+        "heading": "1. Platform Scope & Purpose",
+        "content": "CrewHive is an audio-visual talent directory and professional coordination platform operating in Kerala, India. CrewHive provides a technological service that enables skilled technicians (crew) to showcase professional credentials, role proficiencies, and availability status, and enables recruiters (production houses, event organizers, agencies) to discover and contact matching personnel."
+      },
+      {
+        "heading": "2. No Guarantee of Employment or Bookings",
+        "content": "CrewHive is a talent discovery and coordination network. Registering as a crew member or maintaining an active profile does not guarantee employment, bookings, job offers, minimum work days, or income. Recruiters retain sole discretion over hiring decisions, candidate selection, negotiations, and commercial engagements."
+      },
+      {
+        "heading": "3. Direct Relationship & Engagements",
+        "content": "All commercial arrangements, project schedules, scope of work, day rates, payment terms, and execution details are strictly between the recruiter and the individual crew member. CrewHive is not an employer, contractor, broker, or guarantor of any production or event agreement."
+      },
+      {
+        "heading": "4. User Representations & Profile Authenticity",
+        "content": "All users agree to provide truthful, accurate, and current information regarding their identity, technical craft, years of experience, city of operation, and availability. CrewHive does not conduct formal criminal background checks or state policing verifications. Users are responsible for independently verifying credentials, safety certifications, and commercial references prior to finalizing contracts."
+      },
+      {
+        "heading": "5. Availability Management",
+        "content": "Crew members are responsible for keeping their availability toggle accurate ('Available' vs 'Busy'). Inaccurate availability reporting disrupts production timelines and may lead to profile restrictions."
+      },
+      {
+        "heading": "6. Prohibited Conduct",
+        "content": "Users shall not misuse the platform, harass other members, send unsolicited marketing spam, solicit unapproved fees, circumvent platform communications inappropriately, or submit misleading professional credentials."
+      },
+      {
+        "heading": "7. Limitation of Liability",
+        "content": "To the maximum extent permitted under applicable Indian law, CrewHive, its operators, founders, and affiliates shall not be liable for any indirect, incidental, punitive, or consequential damages, on-set disputes, equipment damages, bodily injuries, delayed productions, or cancellations arising out of arrangements between crew and recruiters."
+      },
+      {
+        "heading": "8. Governing Law & Jurisdiction",
+        "content": "These Terms are governed by and construed in accordance with the laws of India. Any disputes arising hereunder shall be subject to the exclusive jurisdiction of the competent courts in Kerala, India."
+      }
+    ]
+  },
+  "privacy": {
+    "title": "Privacy Policy",
+    "lastUpdated": "Effective Date: January 1, 2027 (Pre-launch Version)",
+    "intro": "At CrewHive, we respect your privacy and are committed to protecting the personal information you share with us. This Privacy Policy describes how we collect, use, and safeguard your data when using our website and WhatsApp onboarding services.",
+    "sections": [
+      {
+        "heading": "1. Information We Collect",
+        "content": "We collect information you provide directly during onboarding and account setup:\n• Phone Number: Used as your primary identifier for authentication via mobile One-Time Password (OTP).\n• Profile Information: Full name, professional craft/role (e.g., sound engineer, lighting operator), years of experience, bio, and portfolio links or production media.\n• Operational City: Your primary district or city base in Kerala and acceptable travel radius."
+      },
+      {
+        "heading": "2. Location Data & Usage",
+        "content": "CrewHive collects self-declared city and district-level operational regions within Kerala to match recruiters with nearby technicians. We do NOT track your continuous live GPS coordinates or background real-time geolocation. Location is used exclusively for role-and-city search indexing."
+      },
+      {
+        "heading": "3. How We Use Your Information",
+        "content": "We use the collected information to:\n• Facilitate talent discovery by displaying professional profiles to verified recruiters.\n• Transmit direct availability requests and booking inquiries via SMS or WhatsApp.\n• Prevent spam, maintain network integrity, and verify phone numbers.\n• Comply with legal requirements in India."
+      },
+      {
+        "heading": "4. No Sale or Unapproved Sharing of Data",
+        "content": "CrewHive does not sell, rent, or trade your personal information to third-party marketing brokers. Your profile details (name, role, city, bio, portfolio) are made visible to logged-in organizers looking to hire crew."
+      },
+      {
+        "heading": "5. Data Security & Storage",
+        "content": "Your data is securely stored in cloud infrastructure adhering to industry standards. Authentication is handled using secure tokenized OTPs. While we implement robust safeguards, no internet transmission is 100% immune from security risks."
+      },
+      {
+        "heading": "6. Your Rights & Data Retention",
+        "content": "You have the right to inspect, correct, update, or request the deletion of your account and profile data at any time by contacting our support team."
+      },
+      {
+        "heading": "7. Updates to This Policy",
+        "content": "We may update this Privacy Policy ahead of our official January 1, 2027 launch. Continued use of the platform constitutes acceptance of the updated policy."
+      }
+    ]
+  },
+  "contact": {
+    "title": "Contact CrewHive",
+    "subtitle": "Get in touch with the team behind Kerala's dedicated AV and events crew network.",
+    "channels": [
+      {
+        "title": "Official WhatsApp Onboarding & Support",
+        "detail": "+91 81390 02826",
+        "sub": "Primary support channel for crew registrations and recruiter inquiries.",
+        "actionText": "Open WhatsApp Chat",
+        "actionHref": "https://wa.me/918139002826?text=Hi"
+      },
+      {
+        "title": "Email Support",
+        "detail": "support@crewhive.in",
+        "sub": "For association partnerships, institutional inquiries, and support.",
+        "actionText": "Send Email",
+        "actionHref": "mailto:support@crewhive.in"
+      },
+      {
+        "title": "Regional Focus",
+        "detail": "Kerala, India",
+        "sub": "Serving all 14 districts: Kochi, Thiruvananthapuram, Kozhikode, Thrissur & beyond.",
+        "actionText": "View Roles",
+        "actionHref": "/#categories"
+      }
+    ],
+    "hours": {
+      "title": "Operating Hours",
+      "text": "Monday to Saturday, 9:30 AM – 6:30 PM IST (WhatsApp inquiries are monitored for urgent production queries)."
+    },
+    "associationNote": {
+      "title": "Industry Associations & Guilds",
+      "text": "Are you a film guild, sound engineers association, or event managers union? Submit a partnership inquiry directly via our dedicated portal.",
+      "cta": "For Associations Form",
+      "href": "/#for-associations"
+    }
+  }
+}
+

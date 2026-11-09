@@ -1,0 +1,76 @@
+{
+  "dashboard": {
+    "title": "Recruiter Portal",
+    "welcome": "Welcome back",
+    "overview": "Request Overview",
+    "totalSent": "Total Requests",
+    "pending": "Pending Responses",
+    "accepted": "Accepted",
+    "declined": "Declined",
+    "noResponse": "No Response",
+    "searchCta": "Search Available Crew",
+    "savedShortlist": "Saved Shortlist",
+    "showRosters": "Crew For This Show",
+    "recentActivity": "Recent Activity & Requests",
+    "emptyStateTitle": "You haven't sent any crew requests yet",
+    "emptyStateSubtitle": "Search for sound, lighting, camera, or stage technicians in Kerala to get started.",
+    "searchTechnicians": "Search for Technicians"
+  },
+  "search": {
+    "title": "Search Professional Crew",
+    "subtitle": "Find vetted sound, lighting, stage, video, and camera technicians across Kerala.",
+    "filters": "Search Filters",
+    "parentRole": "Professional Role",
+    "specialisation": "Specialisation",
+    "location": "Location / District",
+    "availableNow": "Available Now Only",
+    "advancedFilters": "Advanced Filters (P1)",
+    "experience": "Experience Level",
+    "language": "Language",
+    "dayRate": "Day Rate Range (₹)",
+    "reset": "Reset All Filters",
+    "loadMore": "Load More Results",
+    "noResults": "No crew members matched your filters",
+    "noResultsHint": "Try loosening your location or role filters, or toggling off 'Available Now'."
+  },
+  "profile": {
+    "about": "About",
+    "specialisations": "Specialisations & Roles",
+    "pastCredits": "Past Credits & Shows",
+    "equipment": "Equipment Owned & Gear",
+    "portfolio": "Portfolio & Links",
+    "languages": "Languages Known",
+    "dayRate": "Day Rate",
+    "rateOnRequest": "Rate on request",
+    "availableNow": "Available Now",
+    "busy": "Busy / Unavailable",
+    "verifiedMember": "Verified Member",
+    "sendRequest": "Send Availability Request",
+    "whatsapp": "WhatsApp",
+    "call": "Call",
+    "saveShortlist": "Save to Shortlist",
+    "shortlisted": "Shortlisted",
+    "report": "Report Profile"
+  },
+  "requests": {
+    "title": "Availability Requests",
+    "subtitle": "Track live responses across WhatsApp and Web as technicians accept or decline your gigs.",
+    "totalSent": "Total Sent",
+    "pending": "Pending",
+    "accepted": "Accepted",
+    "declined": "Declined",
+    "noResponse": "No Response (2hr)",
+    "crewContacted": "crew pinged",
+    "windowEnded": "No responses within the 2-hour response window",
+    "widenSearch": "Technicians may be booked on this date. We recommend widening your search radius.",
+    "confirmMatch": "Confirm Match",
+    "status": {
+      "pending": "Pending Response",
+      "accepted": "Accepted & Available",
+      "declined": "Declined",
+      "confirmed_match": "Confirmed Match",
+      "no_response": "No Response (Window Ended)"
+    }
+  }
+}
+

@@ -1,0 +1,48 @@
+{
+  "title": "Admin Control Center",
+  "tabs": {
+    "metrics": "Metrics",
+    "profiles": "Profiles & Approvals",
+    "reports": "Report Moderation",
+    "roles": "Roles",
+    "cities": "Cities",
+    "associations": "Associations & CSV"
+  },
+  "metrics": {
+    "title": "Platform Activity & Telemetry",
+    "subtitle": "Derived from genuine database records. No mock or placeholder numbers.",
+    "totalCrew": "Total Crew",
+    "activeAvailability": "Active Availability",
+    "organizers": "Organizers",
+    "requestsSent": "Requests Sent",
+    "acceptedReplies": "Accepted Replies",
+    "declinedReplies": "Declined Replies",
+    "signupsByCity": "Signups by City / District",
+    "signupsByRole": "Signups by Professional Role"
+  },
+  "profiles": {
+    "title": "Crew Profile Moderation & Approvals",
+    "subtitle": "Review crew applications, hide inappropriate profiles, and edit classifications.",
+    "approve": "Approve",
+    "reject": "Reject",
+    "hide": "Hide Profile",
+    "unhide": "Unhide Profile",
+    "editRole": "Edit Role",
+    "hiddenBadge": "Hidden from Search"
+  },
+  "reports": {
+    "title": "Report Moderation Queue",
+    "subtitle": "Investigate submitted reports against technician or recruiter profiles.",
+    "dismiss": "Dismiss",
+    "hideAndResolve": "Hide Profile & Resolve"
+  },
+  "associations": {
+    "title": "Association Administration & Bulk CSV Onboarding",
+    "register": "Register Association",
+    "import": "Bulk Member Import (CSV)",
+    "uploadPrompt": "Click to select or drop CSV file",
+    "execute": "Import Members Only",
+    "executeAndInvite": "Import & Dispatch WhatsApp Invites"
+  }
+}
+

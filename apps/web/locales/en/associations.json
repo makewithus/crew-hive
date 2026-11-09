@@ -1,0 +1,67 @@
+{
+  "section": {
+    "badge": "Institutional Collaboration",
+    "title": "Partnering with Industry Associations",
+    "subtitle": "Empowering guild and union members across Kerala with digital visibility and direct access to production opportunities.",
+    "description": "CrewHive collaborates with recognized professional guilds, trade unions, and technical associations in Kerala's film, audio-visual, and live event sectors. We provide dedicated onboarding tracks, member roster digitization, and credential verification to help your members get hired directly without intermediaries.",
+    "keyBenefitsTitle": "How CrewHive Collaborates with Associations:",
+    "benefits": [
+      {
+        "title": "Bulk Member Onboarding",
+        "description": "Streamlined onboarding assistance for your certified technicians via dedicated WhatsApp and web portals."
+      },
+      {
+        "title": "Verified Guild Credential Badges",
+        "description": "Highlight certified association membership on public profiles to signal verified training and trust."
+      },
+      {
+        "title": "Transparent Industry Demand",
+        "description": "Equip association leadership with real-time insight into industry demand trends, technical crafts, and regional work volume."
+      },
+      {
+        "title": "Zero Commission on Wages",
+        "description": "CrewHive does not take cuts from technician fees or day rates. Direct remuneration is protected."
+      }
+    ],
+    "memberPrompt": "Are you a member of an AV, film, or event association?",
+    "memberCta": "Onboard as Association Member"
+  },
+  "form": {
+    "title": "Association Partnership Inquiry",
+    "subtitle": "Submit your association details to discuss partnership, member integration, or verification protocols ahead of our 2027 launch.",
+    "associationName": "Association / Guild Name",
+    "associationNamePlaceholder": "e.g., Kerala Sound Engineers Association (KSEA)",
+    "contactPerson": "Contact Person & Designation",
+    "contactPersonPlaceholder": "e.g., Rajesh Kumar (General Secretary)",
+    "phone": "Official Phone Number",
+    "phonePlaceholder": "e.g., 9876543210",
+    "email": "Official Email Address",
+    "emailPlaceholder": "e.g., contact@association.org",
+    "city": "Primary City / District",
+    "cityPlaceholder": "Select primary district",
+    "message": "Additional Message / Member Count (Optional)",
+    "messagePlaceholder": "Tell us about your member base, crafts represented, or partnership goals...",
+    "submit": "Submit Partnership Inquiry",
+    "submitting": "Submitting Inquiry...",
+    "validation": {
+      "associationNameRequired": "Please enter the association name.",
+      "contactPersonRequired": "Please enter the contact person's name.",
+      "phoneRequired": "Please enter an official phone number.",
+      "phoneInvalid": "Please enter a valid 10-digit Indian phone number.",
+      "emailRequired": "Please enter an official email address.",
+      "emailInvalid": "Please enter a valid email address.",
+      "cityRequired": "Please select or enter the primary city/district."
+    },
+    "states": {
+      "duplicate": "You have already submitted an inquiry for this association in this session.",
+      "successTitle": "Partnership Inquiry Received",
+      "successMessage": "Thank you for reaching out. The CrewHive partnerships team has recorded your details and will get in touch with your leadership team.",
+      "referenceNote": "Target Launch: January 1, 2027",
+      "errorTitle": "Inquiry Submission Unavailable",
+      "errorMessage": "The association inquiry endpoint is currently pending backend deployment for the launch schedule. Please connect with our team directly via our verified WhatsApp channel (+91 81390 02826) or email support@crewhive.in.",
+      "dismissError": "Dismiss",
+      "submitAnother": "Submit Another Inquiry"
+    }
+  }
+}
+

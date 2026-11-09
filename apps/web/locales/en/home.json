@@ -1,0 +1,240 @@
+{
+  "hero": {
+    "badge": "Kerala's Audio-Visual Industry Network",
+    "headline": "Kerala's AV and events crew, in one place.",
+    "subheadline": "CrewHive connects skilled audio-visual and event technicians with production houses, event managers, and agencies across Kerala.",
+    "priorityIndustriesTitle": "Focused on Kerala's creative & live event industries:",
+    "industries": [
+      "Events & Concerts",
+      "Cinema & Film",
+      "Advertising & Media",
+      "Music Production"
+    ],
+    "primaryCta": "Create free profile",
+    "secondaryCta": "I'm hiring crew",
+    "whatsappCta": "Sign up via WhatsApp",
+    "signInPrompt": "Already registered?",
+    "signInLink": "Sign in with phone"
+  },
+  "audienceNotice": {
+    "badge": "Launch Priority",
+    "title": "Built for Skilled Technicians",
+    "description": "Technicians are the core launch focus of CrewHive. From live sound and concert lighting to cinema camera crews and post-production specialists, our verified platform helps you showcase your craft and get booked."
+  },
+  "crewBenefits": {
+    "badge": "For Working Crew",
+    "title": "Why Skilled Technicians Choose CrewHive",
+    "subtitle": "Everything you need to showcase your skills, control your schedule, and connect with genuine recruiters.",
+    "disclaimer": "CrewHive is a direct discovery platform. We do not promise employment, booking allocation, or fixed income.",
+    "items": [
+      {
+        "title": "Free Professional Profile",
+        "description": "Build a verified profile highlighting your professional experience, equipment expertise, and Kerala city base."
+      },
+      {
+        "title": "Select Professional Roles",
+        "description": "Choose your primary and secondary roles across sound, lighting, video walls, camera, rigging, and more."
+      },
+      {
+        "title": "Control Your Availability",
+        "description": "Toggle between Available and Busy in real time so recruiters only reach out when you are ready to work."
+      },
+      {
+        "title": "Get Discovered by Recruiters",
+        "description": "Production houses, live event organizers, and directors across Kerala can discover your profile directly."
+      },
+      {
+        "title": "Receive Availability Requests",
+        "description": "Get direct availability requests with project dates, roles, and location details."
+      },
+      {
+        "title": "Share Your Portfolio",
+        "description": "Display past events, film credits, production photos, and industry references in one clean link."
+      }
+    ]
+  },
+  "recruiterBenefits": {
+    "badge": "For Production Houses & Organizers",
+    "title": "Why Recruiters Hire on CrewHive",
+    "subtitle": "Eliminate endless phone calls and last-minute panic. Discover verified AV talent ready to work across Kerala.",
+    "disclaimer": "CrewHive provides direct talent discovery. Bookings, commercial agreements, and payouts are handled directly between recruiters and crew.",
+    "items": [
+      {
+        "title": "Find Skilled Technicians",
+        "description": "Access experienced professionals specialized in audio-visual, stage, camera, and production roles."
+      },
+      {
+        "title": "Search by Role & Location",
+        "description": "Filter technicians across Kochi, Thiruvananthapuram, Kozhikode, Thrissur, and all 14 Kerala districts."
+      },
+      {
+        "title": "Discover Available Crew",
+        "description": "Instantly see who is active and available on your required event or shoot dates."
+      },
+      {
+        "title": "View Professional Profiles",
+        "description": "Review verified experience levels, past equipment knowledge, gear familiarity, and verified contact info."
+      },
+      {
+        "title": "Send Availability Requests",
+        "description": "Dispatch project dates and role requirements directly to matching crew members."
+      },
+      {
+        "title": "Contact Matching Crew",
+        "description": "Directly coordinate logistics and contracts with crew members who confirm interest."
+      }
+    ]
+  },
+  "howItWorks": {
+    "badge": "Simple & Transparent",
+    "title": "How CrewHive Works",
+    "subtitle": "Two clear pathways built specifically for Kerala's audio-visual industry.",
+    "crewTab": "For Crew Members",
+    "recruiterTab": "For Recruiters",
+    "crewSteps": [
+      {
+        "number": "01",
+        "title": "Create a Free Profile",
+        "description": "Start online or via our official WhatsApp onboarding channel with your basic details."
+      },
+      {
+        "number": "02",
+        "title": "Verify Your Phone Number",
+        "description": "Authenticate securely via standard mobile OTP — keeping the network authentic."
+      },
+      {
+        "number": "03",
+        "title": "Select Your Professional Role",
+        "description": "Specify your technical craft, specialization, and years of hands-on experience."
+      },
+      {
+        "number": "04",
+        "title": "Choose Your City",
+        "description": "Select your primary Kerala base and operating travel radius for event and shoot calls."
+      },
+      {
+        "number": "05",
+        "title": "Activate Availability",
+        "description": "Turn your status to Available when you are open for work, or Busy when booked."
+      },
+      {
+        "number": "06",
+        "title": "Get Discovered by Recruiters",
+        "description": "Receive availability inquiries and project offers directly from verified organizers."
+      }
+    ],
+    "recruiterSteps": [
+      {
+        "number": "01",
+        "title": "Create an Account",
+        "description": "Register your production company, event agency, or individual hiring profile."
+      },
+      {
+        "number": "02",
+        "title": "Verify Your Phone Number",
+        "description": "Fast and secure OTP verification to ensure recruiter authenticity across the network."
+      },
+      {
+        "number": "03",
+        "title": "Search by Role and Location",
+        "description": "Filter by sound, lighting, video, camera, or rigging across any Kerala district."
+      },
+      {
+        "number": "04",
+        "title": "View Crew Profiles",
+        "description": "Inspect experience, specialization, past productions, and confirmed availability status."
+      },
+      {
+        "number": "05",
+        "title": "Send Availability Requests",
+        "description": "Specify project dates, location, and requirements directly to shortlisted technicians."
+      },
+      {
+        "number": "06",
+        "title": "Contact Interested Crew",
+        "description": "Receive responses promptly and confirm project logistics with responsive professionals."
+      }
+    ]
+  },
+  "rolesShowcase": {
+    "badge": "Technical Crafts",
+    "title": "Professional Role Categories",
+    "subtitle": "Covering the complete technical ecosystem of live events, broadcast, cinema, and media production in Kerala.",
+    "categories": [
+      {
+        "id": "lighting",
+        "name": "Lighting",
+        "description": "Console operators, gaffers, moving head specialists, dimmer technicians, and stage illumination experts.",
+        "skills": ["GrandMA", "Avolites", "DMX512", "Rig Illumination", "Architectural Lighting"]
+      },
+      {
+        "id": "sound",
+        "name": "Sound",
+        "description": "FOH engineers, monitor engineers, RF technicians, line array system engineers, and audio patch crew.",
+        "skills": ["Digital Consoles", "Line Array Tuning", "RF Coordination", "Stage Monitors", "Live Mixing"]
+      },
+      {
+        "id": "rigging",
+        "name": "Rigging & Staging",
+        "description": "Truss riggers, motor operators, stage supervisors, structural technicians, and safety coordinators.",
+        "skills": ["Truss Assembly", "Chain Hoists", "Safety Lines", "Stage Platforms", "Load Balancing"]
+      },
+      {
+        "id": "sfx",
+        "name": "SFX",
+        "description": "Stage pyrotechnicians, cold spark operators, CO2 jet handlers, flame effects, and atmospheric haze crews.",
+        "skills": ["Cold Sparks", "CO2 Jets", "Cryo Effects", "Stage Hazers", "Pyro Safety"]
+      },
+      {
+        "id": "camera",
+        "name": "Camera",
+        "description": "Cinematographers, multi-cam live broadcast operators, focus pullers, gimbal technicians, and jib operators.",
+        "skills": ["Multi-cam Setup", "Studio Pedestals", "Gimbals", "Focus Pulling", "Broadcast SDI"]
+      },
+      {
+        "id": "direction",
+        "name": "Direction & Production",
+        "description": "Production managers, floor managers, technical directors, assistant directors, and cue callers.",
+        "skills": ["Show Calling", "Run of Show", "Crew Management", "Technical Coordination"]
+      },
+      {
+        "id": "art_set",
+        "name": "Art & Set",
+        "description": "Set designers, scenic fabricators, backdrop dressers, prop masters, and exhibition carpenters.",
+        "skills": ["Scenic Build", "Prop Management", "Stage Backdrops", "Material Handling"]
+      },
+      {
+        "id": "photo_video",
+        "name": "Photo & Video",
+        "description": "Event videographers, commercial photographers, drone operators, and live feed capture specialists.",
+        "skills": ["Event Coverage", "DGCA Drone Flying", "Color Profiling", "Speedlight & Strobes"]
+      },
+      {
+        "id": "post",
+        "name": "Post Production",
+        "description": "Offline/online video editors, color grading artists, audio mastering technicians, and motion designers.",
+        "skills": ["Premiere Pro", "DaVinci Resolve", "Color Grading", "Sound Design", "After Effects"]
+      },
+      {
+        "id": "led_video",
+        "name": "LED & Video Walls",
+        "description": "LED wall engineers, Novastar/Brompton processor techs, video switchers, and projection mapping operators.",
+        "skills": ["Novastar", "Brompton", "Video Mapping", "Resolume", "Seamless Switchers"]
+      }
+    ]
+  },
+  "sampleProfile": {
+    "badge": "Sample profile",
+    "badgeNote": "Demonstration Preview — Real profile data will populate upon platform launch.",
+    "viewTitle": "Interactive Profile Preview",
+    "viewDescription": "How skilled technicians appear to verified recruiters on CrewHive."
+  },
+  "founderNote": {
+    "badge": "Platform Vision",
+    "title": "A Note from the Founder",
+    "slotNotice": "Official Founder Statement Slot",
+    "message": "CrewHive was conceived to bring structure, transparency, and dignity to the dedicated technicians who power Kerala's vibrant audio-visual, film, and live events sector. Ahead of our January 1, 2027 official launch, we are working closely with industry associations, technical veterans, and production houses to ensure this platform serves the genuine interests of our working crew. The full founder address and roadmap will be shared here in the upcoming milestones.",
+    "signoff": "CrewHive Founders & Steering Committee",
+    "targetDate": "Target Launch: January 1, 2027"
+  }
+}
