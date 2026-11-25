@@ -23,8 +23,12 @@ import { ToastContainer } from "./src/components/common/Toast.js";
 import { ThemedDialogContainer } from "./src/components/common/ThemedModal.js";
 import RootNavigator from "./src/navigation/RootNavigator.js";
 import * as SecureStore from "expo-secure-store";
+import * as SplashScreen from "expo-splash-screen";
 import { authService } from "./src/services/authService.js";
 import { onSessionExpired } from "./src/services/api.js";
+
+// Prevent native splash screen from hiding until app is bootstrapped
+SplashScreen.preventAutoHideAsync().catch(() => {});
 
 // Dictionaries
 import enDictionary from "./src/localization/en.json";
@@ -57,6 +61,7 @@ export default function App() {
         // start unauthenticated
       } finally {
         setBootstrapping(false);
+        SplashScreen.hideAsync().catch(() => {});
       }
     }
     initSession();
