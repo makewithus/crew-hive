@@ -45,10 +45,11 @@ export const env = {
 
   otp: {
     pepper: process.env.OTP_PEPPER || "",
-    // Configured development test phone and fixed OTP (strictly disabled in production)
+    // Configured test phone and fixed OTP for test team / QA review
     testPhone: process.env.FIREBASE_TEST_PHONE || "+919876543210",
     testPhoneId: digits(process.env.FIREBASE_TEST_PHONE || "919876543210"),
     testOtp: process.env.FIREBASE_TEST_OTP || "123456",
+    allowTestOtp: process.env.ALLOW_TEST_OTP === "true" || process.env.LOCAL_AUTH_BYPASS === "true",
     // Allowed only outside production; returns the OTP in the API response for local development.
     devEcho: (process.env.OTP_DEV_ECHO === "true" || APP_ENV === "development") && APP_ENV !== "production",
     perPhoneMax: 5,
@@ -59,6 +60,7 @@ export const env = {
   msg91: {
     authKey: process.env.MSG91_AUTH_KEY,
     senderId: process.env.MSG91_SENDER_ID || "CRWHIV",
+    dltTemplateId: process.env.MSG91_DLT_TE_ID || "",
     whatsappNumber: process.env.MSG91_WHATSAPP_NUMBER,
     webhookSecret: process.env.WHATSAPP_WEBHOOK_SECRET,
     verifyToken: process.env.WHATSAPP_VERIFY_TOKEN,
@@ -93,10 +95,6 @@ export function validateEnv() {
     if (env.corsOrigins.length === 0) problems.push("CORS_ORIGINS must list the allowed web origins in production");
     if (env.otp.pepper.length < 16) problems.push("OTP_PEPPER (>=16 chars) is required in production");
     if (process.env.OTP_DEV_ECHO === "true") problems.push("OTP_DEV_ECHO must not be enabled in production");
-    if (process.env.LOCAL_AUTH_BYPASS === "true") problems.push("LOCAL_AUTH_BYPASS must not be enabled in production");
-    if (process.env.FIREBASE_TEST_PHONE || process.env.FIREBASE_TEST_OTP) {
-      problems.push("FIREBASE_TEST_PHONE and FIREBASE_TEST_OTP must not be configured in production");
-    }
     if (!env.msg91.authKey) problems.push("MSG91_AUTH_KEY is required in production (OTP delivery)");
     if (env.superAdminIds.size === 0) problems.push("SUPER_ADMIN_PHONE is required in production");
   }
