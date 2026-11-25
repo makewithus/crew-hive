@@ -61,7 +61,7 @@
       "eas": {
         "projectId": "7d2ca049-5a04-4544-bdab-190a1b7dd75a"
       },
-      "apiUrl": "http://192.168.21.145:4000/api/v1"
+      "apiUrl": "https://crew-hive.onrender.com/api/v1"
     },
     "owner": "krrish-singhal-17"
   }

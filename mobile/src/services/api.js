@@ -50,7 +50,7 @@ export function getBaseUrl() {
     const host = (Constants.expoConfig?.hostUri || "").split(":")[0];
     if (host) return `http://${host}:4000/api/v1`;
   }
-  return "http://192.168.21.145:4000/api/v1";
+  return "https://crew-hive.onrender.com/api/v1";
 }
 
 const http = axios.create({ timeout: 12000, headers: { "Content-Type": "application/json", "X-Client": "app" } });

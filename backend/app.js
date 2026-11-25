@@ -35,6 +35,7 @@ export function createExpressApp() {
   app.use(requestLogger);
   app.use(generalApiLimiter);
 
+  app.get("/", (req, res) => res.json({ status: "ok", service: SERVICE_NAME, version: APP_VERSION, api: "/api/v1", health: "/health" }));
   app.get("/health", (req, res) => res.json({ status: "ok", service: SERVICE_NAME, version: APP_VERSION, uptime: process.uptime() }));
   app.get("/ready", async (req, res) => {
     try { await getDb().collection("settings").doc("feature_access").get(); res.json({ status: "ready", firebase: env.firebase.mode }); }

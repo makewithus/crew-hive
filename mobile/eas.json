@@ -13,13 +13,13 @@
         "buildType": "apk"
       },
       "env": {
-        "EXPO_PUBLIC_API_URL": "http://192.168.21.145:4000/api/v1",
-        "EXPO_PUBLIC_API_BASE_URL": "http://192.168.21.145:4000/api/v1",
+        "EXPO_PUBLIC_API_URL": "https://crew-hive.onrender.com/api/v1",
+        "EXPO_PUBLIC_API_BASE_URL": "https://crew-hive.onrender.com/api/v1",
         "EXPO_PUBLIC_FIREBASE_PROJECT_ID": "crewhiveindia",
         "EXPO_PUBLIC_FIREBASE_API_KEY": "AIzaSyCw7FowF5F-3nQ3t_arBIWLKgmfUGCfR6w",
         "EXPO_PUBLIC_WHATSAPP_NUMBER": "+918139002826",
-        "EXPO_PUBLIC_APP_ENV": "development",
-        "EXPO_PUBLIC_LOCAL_AUTH_BYPASS": "true",
+        "EXPO_PUBLIC_APP_ENV": "production",
+        "EXPO_PUBLIC_LOCAL_AUTH_BYPASS": "false",
         "EXPO_PUBLIC_TEST_PHONE": "9876543210",
         "EXPO_PUBLIC_TEST_OTP": "123456",
         "EXPO_PUBLIC_WEB_URL": "https://crewhive.in",
@@ -30,8 +30,8 @@
     "production": {
       "autoIncrement": true,
       "env": {
-        "EXPO_PUBLIC_API_URL": "http://192.168.21.145:4000/api/v1",
-        "EXPO_PUBLIC_API_BASE_URL": "http://192.168.21.145:4000/api/v1",
+        "EXPO_PUBLIC_API_URL": "https://crew-hive.onrender.com/api/v1",
+        "EXPO_PUBLIC_API_BASE_URL": "https://crew-hive.onrender.com/api/v1",
         "EXPO_PUBLIC_FIREBASE_PROJECT_ID": "crewhiveindia",
         "EXPO_PUBLIC_FIREBASE_API_KEY": "AIzaSyCw7FowF5F-3nQ3t_arBIWLKgmfUGCfR6w",
         "EXPO_PUBLIC_WHATSAPP_NUMBER": "+918139002826",
