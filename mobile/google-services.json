@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "946996301316",
+    "project_id": "crewhiveindia",
+    "storage_bucket": "crewhiveindia.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:946996301316:android:469194dcc1d4fb41adaf51",
+        "android_client_info": {
+          "package_name": "com.crewhive.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "946996301316-m9eu7kpgk9cmedo4894rssmbm1a243md.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBT3_XTu6HIqseft51sVdMM9Hp9lkFmZFw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "946996301316-m9eu7kpgk9cmedo4894rssmbm1a243md.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
