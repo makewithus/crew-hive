@@ -41,6 +41,7 @@ const OTP = { type: "string", required: true, pattern: /^\d{6}$/ };
 export const schemas = {
   sendOtp: { phone: PHONE },
   verifyOtp: { phone: PHONE, otp: OTP, deviceId: { type: "string", max: 128 } },
+  firebaseLogin: { idToken: { type: "string", required: true } },
   refresh: { refreshToken: { type: "string", required: true } },
   consent: {
     version: { type: "string" },

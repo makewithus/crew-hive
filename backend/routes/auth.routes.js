@@ -18,6 +18,8 @@ router.post("/otp/send", ...send);
 router.post("/send-otp", ...send);
 router.post("/otp/verify", ...verify);
 router.post("/verify-otp", ...verify);
+router.post("/firebase-login", authLimiter, validate(schemas.firebaseLogin), w(async (req, res) =>
+  res.ok(await auth.firebaseLogin(req.valid.idToken), "Verified")));
 router.post("/refresh", authLimiter, validate(schemas.refresh), w(async (req, res) => res.ok(await auth.refresh(req.valid.refreshToken))));
 router.post("/logout", authenticateRequest, w(async (req, res) => { await auth.logout(req.user); res.ok({}, "Signed out"); }));
 router.get("/me", authenticateRequest, w(async (req, res) => res.ok(await auth.me(req.user))));

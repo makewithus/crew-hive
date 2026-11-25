@@ -5,7 +5,7 @@
  */
 
 import React, { useState, useEffect, useCallback } from "react";
-import { StyleSheet, View, ActivityIndicator, LogBox } from "react-native";
+import { StyleSheet, View, Text, Image, ActivityIndicator, LogBox } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import NetInfo from "@react-native-community/netinfo";
@@ -25,7 +25,7 @@ import RootNavigator from "./src/navigation/RootNavigator.js";
 import * as SecureStore from "expo-secure-store";
 import * as SplashScreen from "expo-splash-screen";
 import { authService } from "./src/services/authService.js";
-import { onSessionExpired } from "./src/services/api.js";
+import { onSessionExpired, wakeBackend } from "./src/services/api.js";
 
 // Prevent native splash screen from hiding until app is bootstrapped
 SplashScreen.preventAutoHideAsync().catch(() => {});
@@ -40,6 +40,7 @@ export default function App() {
   const [initialUser, setInitialUser] = useState(null);
   const [navKey, setNavKey] = useState(0); // remount navigator when the session dies
   const [bootstrapping, setBootstrapping] = useState(true);
+  const [wakingSlow, setWakingSlow] = useState(false);
 
   // Monitor network connectivity
   useEffect(() => {
@@ -49,8 +50,12 @@ export default function App() {
     return () => unsubscribe();
   }, []);
 
-  // Check persisted session
+  // Pre-warm backend & check persisted session
   useEffect(() => {
+    const slowTimer = setTimeout(() => setWakingSlow(true), 2500);
+    // Fire background wake ping immediately so Render starts booting while splash is shown
+    wakeBackend().catch(() => {});
+
     async function initSession() {
       try {
         const savedLang = await SecureStore.getItemAsync("crewhive_lang").catch(() => null);
@@ -60,11 +65,13 @@ export default function App() {
       } catch (e) {
         // start unauthenticated
       } finally {
+        clearTimeout(slowTimer);
         setBootstrapping(false);
         SplashScreen.hideAsync().catch(() => {});
       }
     }
     initSession();
+    return () => clearTimeout(slowTimer);
   }, []);
 
   // A refresh failure (revoked/expired/deleted account) sends the user back to Welcome.
@@ -123,8 +130,18 @@ export default function App() {
   if (bootstrapping) {
     return (
       <View style={styles.loadingContainer}>
-        <StatusBar style="light" backgroundColor={Colors.bg.base} />
-        <ActivityIndicator size="large" color={Colors.accent.amber} />
+        <StatusBar style="light" backgroundColor="#231304" />
+        <Image
+          source={require("./assets/splash-icon.png")}
+          style={styles.loadingLogo}
+          resizeMode="contain"
+        />
+        <ActivityIndicator size="large" color={Colors.accent.amber} style={{ marginTop: 20 }} />
+        {wakingSlow ? (
+          <Text style={styles.wakingText}>
+            {language === "ml" ? "സെർവർ കണക്റ്റ് ചെയ്യുന്നു..." : "Connecting to CrewHive..."}
+          </Text>
+        ) : null}
       </View>
     );
   }
@@ -154,8 +171,19 @@ const styles = StyleSheet.create({
   },
   loadingContainer: {
     flex: 1,
-    backgroundColor: Colors.bg.base,
+    backgroundColor: "#231304",
     alignItems: "center",
     justifyContent: "center",
+  },
+  loadingLogo: {
+    width: 180,
+    height: 180,
+  },
+  wakingText: {
+    marginTop: 14,
+    color: "#F3D39B",
+    fontSize: 13,
+    fontWeight: "600",
+    letterSpacing: 0.4,
   },
 });

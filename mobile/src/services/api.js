@@ -53,7 +53,28 @@ export function getBaseUrl() {
   return "https://crew-hive.onrender.com/api/v1";
 }
 
-const http = axios.create({ timeout: 12000, headers: { "Content-Type": "application/json", "X-Client": "app" } });
+const http = axios.create({ timeout: 65000, headers: { "Content-Type": "application/json", "X-Client": "app" } });
+
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const isTransientColdStart = (err) => {
+  if (!err?.response) return true; // network error / timeout while Render wakes up
+  const s = err.response.status;
+  return s === 502 || s === 503 || s === 504;
+};
+
+/** Pre-warm the Render backend on app launch so subsequent requests are instant. */
+export async function wakeBackend() {
+  const rootUrl = getBaseUrl().replace(/\/api\/v1$/, "");
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      await axios.get(`${rootUrl}/health`, { timeout: 65000 });
+      return true;
+    } catch {
+      if (attempt < 2) await sleep(2000);
+    }
+  }
+  return false;
+}
 
 /* ---------- session ---------- */
 let session = null; // in-memory copy
@@ -87,7 +108,7 @@ async function refreshSession() {
     const s = await loadSession();
     if (!s?.refreshToken) throw new ApiError("Session expired", { status: 401, code: "UNAUTHORIZED" });
     try {
-      const res = await axios.post(`${getBaseUrl()}/auth/refresh`, { refreshToken: s.refreshToken }, { timeout: 12000 });
+      const res = await axios.post(`${getBaseUrl()}/auth/refresh`, { refreshToken: s.refreshToken }, { timeout: 65000 });
       const d = res.data.data;
       await saveSession({ ...s, idToken: d.idToken, refreshToken: d.refreshToken || s.refreshToken, expiresAt: Date.now() + (Number(d.expiresIn) || 3600) * 1000 });
       return session;
@@ -105,7 +126,7 @@ async function cacheWrite(path, data) { try { await FileSystem.makeDirectoryAsyn
 export async function cacheRead(path) { try { return JSON.parse(await FileSystem.readAsStringAsync(cacheFile(path))); } catch { return null; } }
 
 /* ---------- request ---------- */
-async function request(method, path, { body, params, auth = true, cache = false, headers: customHeaders, _retried = false } = {}) {
+async function request(method, path, { body, params, auth = true, cache = false, headers: customHeaders, _retried = false, _coldRetries = 0 } = {}) {
   const headers = { ...(customHeaders || {}) };
   const deviceId = await getDeviceId().catch(() => null);
   if (deviceId) headers["X-Device-Id"] = deviceId;
@@ -122,7 +143,11 @@ async function request(method, path, { body, params, auth = true, cache = false,
   } catch (err) {
     if (err.response?.status === 401 && auth && !_retried) {
       await refreshSession(); // throws + notifies listeners if the session is truly dead
-      return request(method, path, { body, params, auth, cache, _retried: true });
+      return request(method, path, { body, params, auth, cache, headers: customHeaders, _retried: true, _coldRetries });
+    }
+    if (isTransientColdStart(err) && _coldRetries < 2) {
+      await sleep(2500);
+      return request(method, path, { body, params, auth, cache, headers: customHeaders, _retried, _coldRetries: _coldRetries + 1 });
     }
     const apiErr = toApiError(err);
     if (apiErr.isNetwork && cache && method === "GET") {

@@ -117,6 +117,25 @@ export async function verifyOtp(rawPhone, otp) {
   return { customToken, ...session, user: { id, phone, ...claims }, isNewUser: !claims.exists };
 }
 
+export async function firebaseLogin(idToken) {
+  let decoded;
+  try {
+    decoded = await getAuthAdmin().verifyIdToken(idToken);
+  } catch {
+    throw Errors.unauthorized("Invalid or expired Firebase authentication token.");
+  }
+  const rawPhone = decoded.phone_number;
+  if (!rawPhone) throw Errors.badRequest("Firebase account does not have a verified phone number.");
+  const { id, phone } = cleanPhone(rawPhone);
+  const claims = await claimsFor(id);
+  if (!env.isTest) {
+    console.log(`[Auth] Firebase Phone Auth verified for +${id} (role: ${claims.role || "none"}, approved: ${claims.approved}, isNewUser: ${!claims.exists})`);
+  }
+  const customToken = await getAuthAdmin().createCustomToken(id, { phone, ...(claims.role ? { role: claims.role } : {}), ...(claims.approved ? { approved: true } : {}) });
+  const session = await exchange(customToken);
+  return { customToken, ...session, user: { id, phone, ...claims }, isNewUser: !claims.exists };
+}
+
 export async function refresh(refreshToken) {
   try {
     if (isMock()) return await testHooks.auth().refreshSession(refreshToken);

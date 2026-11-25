@@ -59,7 +59,7 @@ export function PhoneAuthScreen({ navigation, route, language, onToggleLanguage,
         }
       }
       setError(msg);
-      toast.error(msg, isMl ? "ലോഗിൻ പിശക്" : "Authentication Error");
+      toast.error(msg, language === "ml" ? "ലോഗിൻ പിശക്" : "Authentication Error");
     } finally {
       setLoading(false);
     }
