@@ -52,8 +52,8 @@ export const env = {
     allowTestOtp: process.env.ALLOW_TEST_OTP === "true" || process.env.LOCAL_AUTH_BYPASS === "true",
     // Allowed only outside production; returns the OTP in the API response for local development.
     devEcho: (process.env.OTP_DEV_ECHO === "true" || APP_ENV === "development") && APP_ENV !== "production",
-    perPhoneMax: 5,
-    perIpMax: 20,
+    perPhoneMax: APP_ENV === "test" ? 5 : parseInt(process.env.OTP_PER_PHONE_MAX || "15", 10),
+    perIpMax: APP_ENV === "test" ? 20 : parseInt(process.env.OTP_PER_IP_MAX || "60", 10),
     windowMs: 15 * 60 * 1000,
   },
 
@@ -69,7 +69,7 @@ export const env = {
   // Bootstrap super-admins (server-side only; never from client headers).
   superAdminIds: new Set([digits(process.env.SUPER_ADMIN_PHONE), ...list(process.env.ADMIN_PHONES).map(digits)].filter(Boolean)),
 
-  rateLimit: { apiMax: parseInt(process.env.RATE_LIMIT_API_MAX || "300", 10), authMax: parseInt(process.env.RATE_LIMIT_AUTH_MAX || "30", 10) },
+  rateLimit: { apiMax: parseInt(process.env.RATE_LIMIT_API_MAX || "300", 10), authMax: parseInt(process.env.RATE_LIMIT_AUTH_MAX || "60", 10) },
 
   corsOrigins: list(process.env.CORS_ORIGINS),
   appUrl: process.env.APP_URL || "",
