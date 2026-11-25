@@ -1,4 +1,5 @@
 /** @type {import('next').NextConfig} */
+// CrewHive Web — Next.js App Router (monorepo root: web/)
 const nextConfig = {
   typescript: {
     ignoreBuildErrors: true,
