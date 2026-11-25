@@ -9,7 +9,7 @@ import { pathToFileURL } from "node:url";
 import path from "node:path";
 import { boot } from "./helpers.js";
 
-const route = (p) => import(pathToFileURL(path.resolve("../apps/web/app/api", p, "route.js")).href);
+const route = (p) => import(pathToFileURL(path.resolve("../web/app/api", p, "route.js")).href);
 let t, web;
 
 /** Invoke a Next route handler exactly as Next would. */
@@ -122,7 +122,7 @@ describe("Cross-client: website and mobile on the same Firebase data", () => {
   let M;
   before(async () => {
     process.env.EXPO_PUBLIC_API_BASE_URL = t.base;
-    const svc = (f) => import(pathToFileURL(path.resolve("../apps/mobile/src/services", f)).href);
+    const svc = (f) => import(pathToFileURL(path.resolve("../mobile/src/services", f)).href);
     const [api, auth, crew, rec] = await Promise.all(["api.js", "authService.js", "crewService.js", "recruiterService.js"].map(svc));
     M = { api, auth: auth.authService, crew: crew.crewService, rec: rec.recruiterService };
   });

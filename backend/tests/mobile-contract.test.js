@@ -9,7 +9,7 @@ import { pathToFileURL } from "node:url";
 import path from "node:path";
 import { boot } from "./helpers.js";
 
-const svc = (f) => import(pathToFileURL(path.resolve("../apps/mobile/src/services", f)).href);
+const svc = (f) => import(pathToFileURL(path.resolve("../mobile/src/services", f)).href);
 let t, baseUrl, M;
 
 before(async () => {

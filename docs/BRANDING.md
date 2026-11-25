@@ -31,13 +31,13 @@
 This document is the **official, binding brand system specification** for the CrewHive ecosystem.
 
 ### Target Platforms:
-1. **CrewHive Web Application** (`apps/web/`): Next.js 15, React 19, Tailwind CSS v4, Lucide Icons, Sonner.
-2. **CrewHive Mobile Application** (`apps/mobile/`): React Native, Expo SDK 54, NativeWind, React Navigation.
+1. **CrewHive Web Application** (`web/`): Next.js 15, React 19, Tailwind CSS v4, Lucide Icons, Sonner.
+2. **CrewHive Mobile Application** (`mobile/`): React Native, Expo SDK 54, NativeWind, React Navigation.
 3. **CrewHive Admin & Moderation Consoles**: Web and desktop management portals.
 4. **Third-Party Partner Experiences**: Association onboarding pages, recruiter dashboards, and embeddable badges.
 
 ### Core Architecture Principle:
-> **The Next.js website (`apps/web/`) is the visual source of truth.**  
+> **The Next.js website (`web/`) is the visual source of truth.**  
 > The mobile application must faithfully reproduce the same color palette, typography hierarchy, component styling, and visual weight while adapting layouts, gestures, and touch targets to native iOS and Android platform conventions. No developer or AI agent should independently invent visual styles.
 
 ---
@@ -408,11 +408,11 @@ To maintain technical credibility with audio engineers, lighting designers, and 
 
 ## 12. Native Mobile Adaptation (React Native Expo)
 
-The CrewHive React Native application (`apps/mobile/`) must deliver the exact same visual identity while adhering to native mobile interaction paradigms.
+The CrewHive React Native application (`mobile/`) must deliver the exact same visual identity while adhering to native mobile interaction paradigms.
 
 ### 12.1 Shared vs. Native Responsibilities
 
-| Design Element | Website (`apps/web/`) | Mobile App (`apps/mobile/`) |
+| Design Element | Website (`web/`) | Mobile App (`mobile/`) |
 | :--- | :--- | :--- |
 | **Color System** | CSS Custom Properties & Tailwind v4 | JavaScript Constants & NativeWind classes |
 | **Typography Family** | Web Fonts via Google Fonts | Bundled TTF/OTF via `expo-font` |
@@ -439,7 +439,7 @@ The mobile application replaces the desktop header with a 4-tab bottom navigatio
 ### 12.3 React Native NativeWind Theme Configuration
 
 ```javascript
-// apps/mobile/tailwind.config.js
+// mobile/tailwind.config.js
 module.exports = {
   content: ["./App.{js,jsx,ts,tsx}", "./app/**/*.{js,jsx,ts,tsx}", "./components/**/*.{js,jsx,ts,tsx}"],
   presets: [require("nativewind/preset")],

@@ -3,28 +3,28 @@
   "version": "1.0.0",
   "private": true,
   "workspaces": [
-    "apps/web",
-    "apps/mobile",
+    "web",
+    "mobile",
     "backend",
     "packages/shared"
   ],
   "scripts": {
-    "dev:web": "npm run dev --workspace=apps/web",
-    "dev:mobile": "npm run start --workspace=apps/mobile",
+    "dev:web": "npm run dev --workspace=web",
+    "dev:mobile": "npm run start --workspace=mobile",
     "dev:backend": "npm run dev --workspace=@crew-hive/backend",
     "dev:api": "npm run dev --workspace=@crew-hive/backend",
     "dev:services": "npm run dev --workspace=@crew-hive/backend",
     "build": "npm run build:web",
-    "build:web": "npm run build --workspace=apps/web",
-    "test:web": "npm run test --workspace=apps/web",
+    "build:web": "npm run build --workspace=web",
+    "test:web": "npm run test --workspace=web",
     "test:backend": "npm run test --workspace=@crew-hive/backend",
     "test:api": "npm run test --workspace=@crew-hive/backend",
     "test:shared": "npm run test --workspace=packages/shared",
     "test:all": "npm run test:shared && npm run test:backend && npm run test:web",
-    "lint:web": "npm run lint --workspace=apps/web",
-    "verify:web": "npm run verify --workspace=apps/web",
-    "verify:responsiveness": "npm run verify:responsiveness --workspace=apps/web",
-    "seed": "npm run seed --workspace=apps/web"
+    "lint:web": "npm run lint --workspace=web",
+    "verify:web": "npm run verify --workspace=web",
+    "verify:responsiveness": "npm run verify:responsiveness --workspace=web",
+    "seed": "npm run seed --workspace=web"
   },
   "overrides": {
     "react": "19.1.0",
