@@ -11,6 +11,7 @@
 
 "use client";
 
+import { apiFetch } from "@/lib/api-client";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -23,7 +24,6 @@ import LanguageToggle from "@/components/LanguageToggle";
 import { useLanguage } from "@/context/LanguageContext";
 import {
   Phone,
-  ShieldCheck,
   Building2,
   FileCheck2,
   CheckCircle2,
@@ -31,15 +31,12 @@ import {
   ArrowRight,
   ArrowLeft,
   RotateCw,
+  ChevronDown,
 } from "lucide-react";
 import { toast } from "sonner";
+import CountryCodeSelect from "@/components/CountryCodeSelect";
+import { COUNTRIES, COUNTRY_CODES } from "@/utils/countries";
 
-const COUNTRY_CODES = [
-  { code: "+91", country: "India", flag: "🇮🇳" },
-  { code: "+971", country: "UAE", flag: "🇦🇪" },
-  { code: "+44", country: "UK", flag: "🇬🇧" },
-  { code: "+1", country: "USA", flag: "🇺🇸" },
-];
 
 export default function RecruiterRegisterPage() {
   const router = useRouter();
@@ -79,7 +76,7 @@ export default function RecruiterRegisterPage() {
   useEffect(() => {
     async function loadCities() {
       try {
-        const res = await fetch("/api/taxonomy/cities");
+        const res = await apiFetch("/api/taxonomy/cities");
         const json = await res.json();
         if (json.success && Array.isArray(json.data)) {
           setAvailableCities(json.data);
@@ -97,21 +94,30 @@ export default function RecruiterRegisterPage() {
     setError("");
 
     const digits = phoneDigits.replace(/\D/g, "");
-    if (digits.length < 10) {
-      setError(
-        isMalayalam
-          ? "ദയവായി സാധുവായ 10 അക്ക ഫോൺ നമ്പർ നൽകുക."
-          : "Please enter a valid 10-digit mobile number."
-      );
+    if (!digits) {
+      const msg = isMalayalam
+        ? "ദയവായി സാധുവായ ഫോൺ നമ്പർ നൽകുക."
+        : "Please enter a valid phone number.";
+      setError(msg);
+      toast.error(msg);
       return;
     }
 
-    if (!isValidPhone(fullPhone)) {
-      setError(
-        isMalayalam
-          ? "അസാധുവായ ഫോൺ നമ്പർ ഫോർമാറ്റ്."
-          : "Invalid phone number format."
-      );
+    if (countryCode === "+91") {
+      if (digits.length !== 10 || !/^[6-9]\d{9}$/.test(digits)) {
+        const msg = isMalayalam
+          ? "സാധുവായ 10 അക്ക ഇന്ത്യൻ മൊബൈൽ നമ്പർ നൽകുക (6-9 ൽ തുടങ്ങുന്നത്)."
+          : "Please provide a valid 10-digit Indian mobile number";
+        setError(msg);
+        toast.error(msg);
+        return;
+      }
+    } else if (digits.length < 7 || !isValidPhone(fullPhone)) {
+      const msg = isMalayalam
+        ? "അസാധുവായ ഫോൺ നമ്പർ ഫോർമാറ്റ്."
+        : "Invalid phone number format.";
+      setError(msg);
+      toast.error(msg);
       return;
     }
 
@@ -191,15 +197,17 @@ export default function RecruiterRegisterPage() {
     setError("");
 
     if (!companyOrName.trim()) {
-      setError(
-        isMalayalam
-          ? "കമ്പനി അല്ലെങ്കിൽ വ്യക്തിഗത പേര് നൽകുക."
-          : "Company or individual name is required."
-      );
+      const msg = isMalayalam
+        ? "കമ്പനി അല്ലെങ്കിൽ വ്യക്തിഗത പേര് നൽകുക."
+        : "Company or individual name is required.";
+      setError(msg);
+      toast.error(msg);
       return;
     }
     if (!city) {
-      setError(isMalayalam ? "നഗരം തിരഞ്ഞെടുക്കുക." : "City is required.");
+      const msg = isMalayalam ? "നഗരം തിരഞ്ഞെടുക്കുക." : "City is required.";
+      setError(msg);
+      toast.error(msg);
       return;
     }
 
@@ -212,17 +220,17 @@ export default function RecruiterRegisterPage() {
     setError("");
 
     if (!agreeTerms || !agreeConduct) {
-      setError(
-        isMalayalam
-          ? "തുടരാൻ സേവന നിബന്ധനകളും പെരുമാറ്റച്ചട്ടവും അംഗീകരിക്കണം."
-          : "You must accept the terms, privacy policy, and acceptable behaviour to continue."
-      );
+      const msg = isMalayalam
+        ? "തുടരാൻ സേവന നിബന്ധനകളും പെരുമാറ്റച്ചട്ടവും അംഗീകരിക്കണം."
+        : "You must accept the terms, privacy policy, and acceptable behaviour to continue.";
+      setError(msg);
+      toast.error(msg);
       return;
     }
 
     setLoading(true);
     try {
-      const res = await fetch("/api/auth/signup", {
+      const res = await apiFetch("/api/auth/signup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -244,15 +252,22 @@ export default function RecruiterRegisterPage() {
         throw new Error(json.error || "Registration failed.");
       }
 
+      if (typeof window !== "undefined") {
+        try {
+          sessionStorage.setItem("crewhive_user_role", "organizer");
+          sessionStorage.setItem("crewhive_user_phone", fullPhone);
+        } catch (_) {}
+      }
+
       toast.success(
         isMalayalam
-          ? "റിക്രൂട്ടർ പ്രൊഫൈൽ വിജയകരമായി നിർമ്മിച്ചു!"
-          : "Recruiter profile created successfully! Redirecting to dashboard…"
+          ? "റിക്രൂട്ടർ പ്രൊഫൈൽ വിജയകരമായി നിർമ്മിച്ചു! തിരയലിലേക്ക് പോകുന്നു…"
+          : "Recruiter profile created successfully! Redirecting to search…"
       );
       setStep(5);
       setTimeout(() => {
-        router.push("/organizer/dashboard");
-      }, 2000);
+        window.location.href = "/organizer/search";
+      }, 1500);
     } catch (err) {
       const msg = err.message || "Registration failed. Please try again.";
       setError(msg);
@@ -267,7 +282,7 @@ export default function RecruiterRegisterPage() {
       <Header />
 
       <main className="flex-1 flex items-center justify-center p-4 py-12">
-        <div className="w-full max-w-lg bg-card border border-border rounded-2xl p-6 sm:p-8 shadow-xl">
+        <div className="w-full max-w-md bg-card border border-border rounded-2xl p-6 sm:p-8 shadow-xl">
           {/* Top navigation / Lang switcher */}
           <div className="flex items-center justify-between mb-6 pb-4 border-b border-border">
             <span className="text-xs font-semibold tracking-wider uppercase text-primary">
@@ -301,13 +316,7 @@ export default function RecruiterRegisterPage() {
             ))}
           </div>
 
-          {/* Error Notice */}
-          {error && (
-            <div className="mb-6 p-3 rounded-xl bg-destructive/10 border border-destructive/30 text-destructive text-sm flex items-start gap-2">
-              <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
-              <span>{error}</span>
-            </div>
-          )}
+
 
           {/* ── STEP 1: PHONE NUMBER ─────────────────────────────────────── */}
           {step === 1 && (
@@ -325,28 +334,27 @@ export default function RecruiterRegisterPage() {
                 </p>
               </div>
 
-              <div>
-                <label className="block text-xs font-semibold mb-2">
-                  {isMalayalam ? "മൊബൈൽ നമ്പർ" : "Mobile Number"}
-                </label>
-                <div className="flex gap-2">
-                  <select
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-xs font-semibold mb-2">
+                    {isMalayalam ? "രാജ്യ കോഡ്" : "Country Code"}
+                  </label>
+                  <CountryCodeSelect
                     value={countryCode}
-                    onChange={(e) => setCountryCode(e.target.value)}
-                    className="bg-muted border border-border rounded-xl px-3 py-2.5 text-sm font-medium focus:border-primary outline-none"
-                  >
-                    {COUNTRY_CODES.map((c) => (
-                      <option key={c.code} value={c.code}>
-                        {c.flag} {c.code}
-                      </option>
-                    ))}
-                  </select>
+                    onChange={(code) => setCountryCode(code)}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold mb-2">
+                    {isMalayalam ? "മൊബൈൽ നമ്പർ" : "Mobile / WhatsApp Number"}
+                  </label>
                   <Input
                     type="tel"
                     placeholder="9876543210"
                     value={phoneDigits}
-                    onChange={(e) => setPhoneDigits(e.target.value)}
-                    className="flex-1 bg-muted border-border"
+                    onChange={(e) => setPhoneDigits(e.target.value.replace(/\D/g, "").slice(0, 10))}
+                    className="w-full bg-muted border-border"
                     autoFocus
                   />
                 </div>
@@ -394,15 +402,12 @@ export default function RecruiterRegisterPage() {
                 <Input
                   type="text"
                   maxLength={6}
-                  placeholder="123456"
+                  placeholder="••••••"
                   value={otp}
                   onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))}
                   className="text-center tracking-widest text-xl font-bold bg-muted py-6"
                   autoFocus
                 />
-                <p className="text-[11px] text-muted-foreground text-center mt-2">
-                  (Dev local bypass: code 123456)
-                </p>
               </div>
 
               <div className="flex items-center justify-between text-xs">
@@ -488,29 +493,32 @@ export default function RecruiterRegisterPage() {
                 <label className="block text-xs font-semibold mb-2">
                   {isMalayalam ? "പ്രവർത്തന നഗരം *" : "Operating City / Hub *"}
                 </label>
-                <select
-                  value={city}
-                  onChange={(e) => setCity(e.target.value)}
-                  className="w-full bg-muted border border-border rounded-xl px-3 py-2.5 text-sm font-medium focus:border-primary outline-none"
-                >
-                  {availableCities.length > 0 ? (
-                    availableCities.map((c) => (
-                      <option key={c.id || c.nameEn} value={c.nameEn}>
-                        {isMalayalam && c.nameMl ? c.nameMl : c.nameEn}
-                      </option>
-                    ))
-                  ) : (
-                    <>
-                      <option value="Kochi">Kochi / കൊച്ചി</option>
-                      <option value="Thiruvananthapuram">
-                        Thiruvananthapuram / തിരുവനന്തപുരം
-                      </option>
-                      <option value="Kozhikode">Kozhikode / കോഴിക്കോട്</option>
-                      <option value="Thrissur">Thrissur / തൃശ്ശൂർ</option>
-                      <option value="Kannur">Kannur / കണ്ണൂർ</option>
-                    </>
-                  )}
-                </select>
+                <div className="relative">
+                  <select
+                    value={city}
+                    onChange={(e) => setCity(e.target.value)}
+                    className="w-full bg-[#1A1A1A] border border-[#2A2A2A] rounded-xl pl-4 pr-10 py-2.5 text-sm font-medium focus:border-primary outline-none appearance-none cursor-pointer"
+                  >
+                    {availableCities.length > 0 ? (
+                      availableCities.map((c) => (
+                        <option key={c.id || c.nameEn} value={c.nameEn} className="bg-[#141414] text-foreground py-2">
+                          {isMalayalam && c.nameMl ? c.nameMl : c.nameEn}
+                        </option>
+                      ))
+                    ) : (
+                      <>
+                        <option value="Kochi" className="bg-[#141414] text-foreground py-2">{isMalayalam ? "കൊച്ചി" : "Kochi"}</option>
+                        <option value="Thiruvananthapuram" className="bg-[#141414] text-foreground py-2">
+                          {isMalayalam ? "തിരുവനന്തപുരം" : "Thiruvananthapuram"}
+                        </option>
+                        <option value="Kozhikode" className="bg-[#141414] text-foreground py-2">{isMalayalam ? "കോഴിക്കോട്" : "Kozhikode"}</option>
+                        <option value="Thrissur" className="bg-[#141414] text-foreground py-2">{isMalayalam ? "തൃശ്ശൂർ" : "Thrissur"}</option>
+                        <option value="Kannur" className="bg-[#141414] text-foreground py-2">{isMalayalam ? "കണ്ണൂർ" : "Kannur"}</option>
+                      </>
+                    )}
+                  </select>
+                  <ChevronDown className="w-4 h-4 text-muted-foreground absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                </div>
               </div>
 
               <Button

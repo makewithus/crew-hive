@@ -19,7 +19,7 @@ export default function LanguageToggle({ className = "", compact = false }) {
 
   return (
     <div
-      className={`inline-flex items-center rounded-xl bg-card/90 border border-border p-0.5 text-xs shadow-xs shrink-0 select-none whitespace-nowrap ${className}`}
+      className={`inline-flex items-center h-9 rounded-xl bg-card/90 border border-border p-1 text-xs shadow-xs shrink-0 select-none whitespace-nowrap ${className}`}
       role="group"
       aria-label="Language selection"
     >
@@ -29,7 +29,7 @@ export default function LanguageToggle({ className = "", compact = false }) {
       <button
         type="button"
         onClick={() => handleSelect("en")}
-        className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+        className={`h-7 px-2.5 inline-flex items-center justify-center rounded-lg text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
           locale === "en"
             ? "bg-primary text-zinc-950 shadow-xs"
             : "text-muted-foreground hover:text-foreground"
@@ -42,7 +42,7 @@ export default function LanguageToggle({ className = "", compact = false }) {
       <button
         type="button"
         onClick={() => handleSelect("ml")}
-        className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+        className={`h-7 px-2.5 inline-flex items-center justify-center rounded-lg text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
           locale === "ml"
             ? "bg-primary text-zinc-950 shadow-xs"
             : "text-muted-foreground hover:text-foreground"

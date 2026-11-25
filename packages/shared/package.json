@@ -1,0 +1,22 @@
+{
+  "name": "@crew-hive/shared",
+  "version": "1.0.0",
+  "description": "Universal platform-agnostic business logic, contracts, taxonomy, constants, and validators for CrewHive",
+  "main": "src/index.js",
+  "module": "src/index.js",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.js",
+    "./constants": "./src/constants/index.js",
+    "./role-taxonomy": "./src/role-taxonomy/index.js",
+    "./cities": "./src/cities/index.js",
+    "./validation": "./src/validation/index.js",
+    "./api-contracts": "./src/api-contracts/index.js",
+    "./enums": "./src/enums/index.js",
+    "./utils": "./src/utils/index.js"
+  },
+  "scripts": {
+    "test": "node --test tests/**/*.test.js"
+  },
+  "private": true
+}

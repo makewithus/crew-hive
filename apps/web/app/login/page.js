@@ -1,23 +1,16 @@
 "use client";
 
+import { apiFetch } from "@/lib/api-client";
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { sendOtp, verifyOtp, fetchUserRole, isValidPhone, prewarmRecaptcha } from "@/lib/auth";
 import { useLanguage } from "@/context/LanguageContext";
 import LanguageToggle from "@/components/LanguageToggle";
-import { AlertTriangle, CheckCircle2, Info, X, ChevronLeft } from "lucide-react";
+import CountryCodeSelect from "@/components/CountryCodeSelect";
+import { AlertTriangle, CheckCircle2, Info, X, ChevronLeft, Phone, Clock } from "lucide-react";
 import { toast as sonnerToast } from "sonner";
-
-const COUNTRY_CODES = [
-  { code: "+91", country: "India", flag: "🇮🇳" },
-  { code: "+1", country: "USA / Canada", flag: "🇺🇸" },
-  { code: "+44", country: "UK", flag: "🇬🇧" },
-  { code: "+971", country: "UAE", flag: "🇦🇪" },
-  { code: "+65", country: "Singapore", flag: "🇸🇬" },
-  { code: "+60", country: "Malaysia", flag: "🇲🇾" },
-  { code: "+61", country: "Australia", flag: "🇦🇺" },
-];
+import { COUNTRIES, COUNTRY_CODES } from "@/utils/countries";
 
 // Numbers trusted as super admins client-side (fallback when server env vars not set)
 const clientSuperAdminNumbers = (process.env.NEXT_PUBLIC_ADMIN_PHONES || "")
@@ -34,10 +27,20 @@ export default function LoginPage() {
   const [otp, setOtp] = useState("");
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState(null);
+  const [timeoutNotice, setTimeoutNotice] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("reason") === "timeout") {
+        setTimeoutNotice(true);
+      }
+    }
+  }, []);
 
   useEffect(() => {
     if (!toast) return;
-    const t = setTimeout(() => setToast(null), 4500);
+    const t = setTimeout(() => setToast(null), 3500);
     return () => clearTimeout(t);
   }, [toast]);
 
@@ -61,19 +64,18 @@ export default function LoginPage() {
   const handleSendOtp = async (e) => {
     e.preventDefault();
     const digits = phone.replace(/\D/g, "");
-    if (digits.length < 7) {
-      showToast(
-        "error",
-        "Please enter a valid phone number (without country code).",
-      );
+    if (!digits) {
+      showToast("error", "Please enter your phone number.");
       return;
     }
 
-    if (!isValidPhone(fullPhone)) {
-      showToast(
-        "error",
-        "Invalid phone number. Check country code and digits.",
-      );
+    if (countryCode === "+91") {
+      if (digits.length !== 10 || !/^[6-9]\d{9}$/.test(digits)) {
+        showToast("error", "Please provide a valid 10-digit Indian mobile number");
+        return;
+      }
+    } else if (digits.length < 7 || !isValidPhone(fullPhone)) {
+      showToast("error", "Invalid phone number. Check country code and digits.");
       return;
     }
 
@@ -81,7 +83,7 @@ export default function LoginPage() {
 
     // Check number exists + approval before firing OTP
     try {
-      const checkRes = await fetch("/api/auth/initialize", {
+      const checkRes = await apiFetch("/api/auth/initialize", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ phone: fullPhone, checkOnly: true }),
@@ -107,11 +109,7 @@ export default function LoginPage() {
       return;
     }
     setStep("otp");
-    // Show hint on localhost (next dev or next start locally)
-    const isLocal = typeof window !== "undefined" &&
-      (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1");
-    const devHint = isLocal ? " (use 123456)" : "";
-    showToast("info", `OTP sent to ${countryCode} ${digits}${devHint}`);
+    showToast("info", `OTP sent to ${countryCode} ${digits}`);
   };
 
   const handleVerifyOtp = async (e) => {
@@ -256,6 +254,17 @@ export default function LoginPage() {
         </div>
 
         <div className="bg-[#1A1A1A] border border-zinc-800 rounded-2xl p-6 sm:p-8">
+          {timeoutNotice && (
+            <div className="mb-5 p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-300 text-xs flex items-center gap-2.5">
+              <Clock className="w-4 h-4 text-amber-400 shrink-0" />
+              <span>
+                {isMalayalam
+                  ? "10 മിനിറ്റ് പ്രവർത്തനമില്ലാത്തതിനാൽ നിങ്ങളുടെ സെഷൻ അവസാനിച്ചു. ദയവായി വീണ്ടും ലോഗിൻ ചെയ്യുക."
+                  : "Your session expired after 10 minutes of inactivity. Please sign in again."}
+              </span>
+            </div>
+          )}
+
           {step === "phone" && (
             <>
               <h1 className="text-white text-2xl font-semibold mb-1">
@@ -271,34 +280,30 @@ export default function LoginPage() {
                   <label className="block text-zinc-400 text-xs font-medium mb-1.5 uppercase tracking-wide">
                     {isMalayalam ? "കൺട്രി കോഡ്" : "Country Code"}
                   </label>
-                  <select
+                  <CountryCodeSelect
                     value={countryCode}
-                    onChange={(e) => setCountryCode(e.target.value)}
-                    className="w-full bg-[#242424] border border-zinc-700 text-white rounded-xl px-3 py-3 text-sm focus:outline-none focus:border-[#F5A623]"
-                  >
-                    {COUNTRY_CODES.map((c) => (
-                      <option key={c.code} value={c.code}>
-                        {c.flag} {c.code} — {c.country}
-                      </option>
-                    ))}
-                  </select>
+                    onChange={(code) => setCountryCode(code)}
+                  />
                 </div>
                 <div>
                   <label className="block text-zinc-400 text-xs font-medium mb-1.5 uppercase tracking-wide">
                     {isMalayalam ? "ഫോൺ നമ്പർ" : "Phone Number"}
                   </label>
-                  <input
-                    type="tel"
-                    value={phone}
-                    onChange={(e) =>
-                      setPhone(e.target.value.replace(/\D/g, "").slice(0, 12))
-                    }
-                    placeholder="98765 43210"
-                    className="w-full bg-[#242424] border border-zinc-700 text-white rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-[#F5A623] placeholder-zinc-600"
-                    autoFocus
-                    inputMode="numeric"
-                    autoComplete="tel"
-                  />
+                  <div className="relative">
+                    <Phone className="w-4 h-4 text-zinc-500 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    <input
+                      type="tel"
+                      value={phone}
+                      onChange={(e) =>
+                        setPhone(e.target.value.replace(/\D/g, "").slice(0, 12))
+                      }
+                      placeholder={countryCode === "+91" ? "98765 43210" : "12345 67890"}
+                      className="w-full bg-[#1A1A1A] border border-[#2A2A2A] text-white rounded-xl pl-10 pr-4 py-3 text-sm focus:outline-none focus:border-[#F5A623] focus:ring-1 focus:ring-[#F5A623] placeholder-zinc-600 transition-colors"
+                      autoFocus
+                      inputMode="numeric"
+                      autoComplete="tel"
+                    />
+                  </div>
                   <p className="text-zinc-600 text-xs mt-1.5">
                     {isMalayalam
                       ? "0 അല്ലെങ്കിൽ കൺട്രി കോഡ് ഇല്ലാതെ"
@@ -307,7 +312,12 @@ export default function LoginPage() {
                 </div>
                 <button
                   type="submit"
-                  disabled={loading}
+                  disabled={
+                    loading ||
+                    (countryCode === "+91"
+                      ? phone.replace(/\D/g, "").length !== 10
+                      : phone.replace(/\D/g, "").length < 7)
+                  }
                   className="w-full bg-[#F5A623] hover:bg-[#E8960F] disabled:opacity-50 disabled:cursor-not-allowed text-black font-semibold rounded-xl py-3 text-sm transition-colors cursor-pointer"
                 >
                   {loading ? (
@@ -371,7 +381,7 @@ export default function LoginPage() {
                     onChange={(e) =>
                       setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))
                     }
-                    placeholder="123456"
+                    placeholder="••••••"
                     className="w-full bg-[#242424] border border-zinc-700 text-white rounded-xl px-4 py-3 text-lg text-center tracking-[0.4em] focus:outline-none focus:border-[#F5A623] placeholder-zinc-600 font-bold"
                     autoFocus
                     inputMode="numeric"

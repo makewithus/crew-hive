@@ -12,13 +12,13 @@
 
 "use client";
 
+import { apiFetch } from "@/lib/api-client";
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useAuth } from "@/hooks/useAuth";
 import Header from "@/components/Header";
 import AuthGuard from "@/components/AuthGuard";
 import CrewCard from "@/components/CrewCard";
-import LanguageToggle from "@/components/LanguageToggle";
 import { useLanguage } from "@/context/LanguageContext";
 import { USER_ROLES } from "@/utils/constants";
 import { Button } from "@/components/ui/button";
@@ -44,7 +44,7 @@ export default function OrganizerShortlistPage() {
 
     try {
       const phoneParam = encodeURIComponent(userPhone || currentUser?.phoneNumber || "");
-      const res = await fetch(`/api/recruiter/shortlist?phone=${phoneParam}`);
+      const res = await apiFetch(`/api/recruiter/shortlist?phone=${phoneParam}`);
       const json = await res.json();
 
       if (json.success) {
@@ -62,7 +62,7 @@ export default function OrganizerShortlistPage() {
   const handleRemove = async (crewId) => {
     try {
       const phoneParam = encodeURIComponent(userPhone || currentUser?.phoneNumber || "");
-      const res = await fetch(`/api/recruiter/shortlist?crewId=${crewId}&phone=${phoneParam}`, {
+      const res = await apiFetch(`/api/recruiter/shortlist?crewId=${crewId}&phone=${phoneParam}`, {
         method: "DELETE",
       });
       if (res.ok) {
@@ -118,7 +118,6 @@ export default function OrganizerShortlistPage() {
               </div>
 
               <div className="flex items-center gap-3">
-                <LanguageToggle compact />
                 <Button asChild className="bg-primary text-primary-foreground hover:bg-primary/90 text-xs">
                   <Link href="/organizer/search">
                     <Search className="w-3.5 h-3.5 mr-1.5" />

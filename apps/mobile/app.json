@@ -1,0 +1,68 @@
+{
+  "expo": {
+    "name": "CrewHiveApp",
+    "slug": "CrewHiveApp",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.crewhive.app",
+      "associatedDomains": [
+        "applinks:crewhive.in",
+        "applinks:www.crewhive.in"
+      ]
+    },
+    "android": {
+      "package": "com.crewhive.app",
+      "adaptiveIcon": {
+        "backgroundColor": "#E6F4FE",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "https",
+              "host": "crewhive.in",
+              "pathPrefix": "/crew"
+            },
+            {
+              "scheme": "https",
+              "host": "www.crewhive.in",
+              "pathPrefix": "/crew"
+            }
+          ],
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
+        }
+      ]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      "expo-font",
+      "expo-splash-screen",
+      "expo-web-browser"
+    ],
+    "scheme": "crewhive",
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "7d2ca049-5a04-4544-bdab-190a1b7dd75a"
+      },
+      "apiUrl": "http://192.168.21.145:4000/api/v1"
+    },
+    "owner": "krrish-singhal-17"
+  }
+}

@@ -17,15 +17,21 @@ const PUBLIC_PATHS = [
 export const AuthGuard = ({ children, requiredRole = null }) => {
   const {
     currentUser,
-    userRole,
+    userRole: authUserRole,
     userApproved,
     isAdmin,
     isSuperAdmin,
     loading,
     isAuthenticated,
+    refreshUser,
   } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
+
+  // Read role with fallback to sessionStorage if auth state is still resolving
+  const userRole =
+    authUserRole ||
+    (typeof window !== "undefined" ? sessionStorage.getItem("crewhive_user_role") : null);
 
   useEffect(() => {
     if (loading) return;
@@ -39,8 +45,17 @@ export const AuthGuard = ({ children, requiredRole = null }) => {
     // Admin/super_admin bypasses approval + role checks
     if (isAdmin) return;
 
-    // Note: Pending crew are allowed into their own dashboard to view/edit their profile
-    // and check approval status. Recruiter search independently filters by approved status.
+    // If authenticated but userRole is missing, attempt to refresh role from server
+    if (requiredRole && !userRole && refreshUser) {
+      refreshUser().then((res) => {
+        if (!res?.role) {
+          // If no profile exists yet, redirect to onboarding
+          if (requiredRole === "crew") router.push("/crew/onboarding");
+          else if (requiredRole === "organizer") router.push("/recruiter/register");
+        }
+      });
+      return;
+    }
 
     // Role mismatch → redirect to the correct dashboard
     if (requiredRole && userRole && userRole !== requiredRole) {
@@ -61,6 +76,7 @@ export const AuthGuard = ({ children, requiredRole = null }) => {
     requiredRole,
     router,
     pathname,
+    refreshUser,
   ]);
 
   if (loading) {
@@ -75,7 +91,29 @@ export const AuthGuard = ({ children, requiredRole = null }) => {
   }
 
   if (!isAuthenticated) return null;
-  if (requiredRole && userRole !== requiredRole && !isAdmin) return null;
+
+  // If authenticated but userRole is still resolving, show loader instead of blank screen
+  if (requiredRole && !userRole && !isAdmin) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#0D0D0D]">
+        <div className="text-center">
+          <div className="w-8 h-8 border-2 border-[#F5A623] border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+          <p className="text-zinc-400 text-sm">Loading dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (requiredRole && userRole && userRole !== requiredRole && !isAdmin) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#0D0D0D]">
+        <div className="text-center">
+          <div className="w-8 h-8 border-2 border-[#F5A623] border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+          <p className="text-zinc-400 text-sm">Redirecting...</p>
+        </div>
+      </div>
+    );
+  }
 
   return children;
 };

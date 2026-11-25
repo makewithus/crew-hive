@@ -8,6 +8,7 @@
  * - After each send we immediately re-warm in background for the next request
  */
 
+import { apiFetch } from "./api-client";
 import {
   signInWithPhoneNumber,
   signInWithCustomToken,
@@ -23,7 +24,10 @@ let _lastOtpSentAt = 0;
 const OTP_DEBOUNCE_MS = 30_000;
 
 // ─── DEV detection ────────────────────────────────────────────────────────────
-const isLocalDev = () => {
+export const isLocalDev = () => {
+  if (process.env.NODE_ENV === "production" || process.env.NEXT_PUBLIC_APP_ENV === "production") {
+    return false;
+  }
   if (process.env.NODE_ENV === "development") return true;
   if (typeof window !== "undefined") {
     const h = window.location.hostname;
@@ -96,15 +100,43 @@ const friendlyError = (code) =>
 // ─── Phone validation ─────────────────────────────────────────────────────────
 export const isValidPhone = (phone) => /^\+[1-9]\d{6,14}$/.test(phone);
 
+export const isValidIndianPhone = (phone) => {
+  if (!phone) return false;
+  const digits = String(phone).replace(/\D/g, "");
+  if (digits.length === 10) return /^[6-9]\d{9}$/.test(digits);
+  if (digits.length === 12 && digits.startsWith("91")) return /^[6-9]\d{9}$/.test(digits.slice(2));
+  return false;
+};
+
 // ─── Send OTP ─────────────────────────────────────────────────────────────────
 export const sendOtp = async (fullPhone) => {
   if (!isValidPhone(fullPhone)) {
     return { success: false, error: "Invalid phone number format." };
   }
 
-  // LOCAL MODE — bypass Firebase entirely, use server route with code 123456
+  // Strictly validate 10-digit Indian mobile number at the phone step
+  if (fullPhone.startsWith("+91") && !isValidIndianPhone(fullPhone)) {
+    return { success: false, error: "Please provide a valid 10-digit Indian mobile number" };
+  }
+
+  // LOCAL MODE — validate and persist phone session
   if (isLocalDev()) {
+    try {
+      const res = await apiFetch("/api/auth/send-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone: fullPhone }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        return { success: false, error: data.error || "Please provide a valid 10-digit Indian mobile number" };
+      }
+    } catch (_) {}
+
     _pendingPhone = fullPhone;
+    if (typeof window !== "undefined") {
+      try { sessionStorage.setItem("crewhive_pending_phone", fullPhone); } catch (_) {}
+    }
     return { success: true };
   }
 
@@ -159,12 +191,12 @@ export const verifyOtp = async (code) => {
 
   // LOCAL MODE — validate via server route
   if (isLocalDev()) {
-    const phone = _pendingPhone;
+    const phone = _pendingPhone || (typeof window !== "undefined" ? sessionStorage.getItem("crewhive_pending_phone") : null);
     if (!phone) {
       return { success: false, error: "Session expired. Please enter your number again.", code: "auth/session-expired" };
     }
     try {
-      const res = await fetch("/api/auth/verify-otp", {
+      const res = await apiFetch("/api/auth/verify-otp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ phone, code: String(code).trim() }),
@@ -173,6 +205,9 @@ export const verifyOtp = async (code) => {
       if (!res.ok) return { success: false, error: data.error || "Invalid code." };
       const credential = await signInWithCustomToken(auth, data.customToken);
       _pendingPhone = null;
+      if (typeof window !== "undefined") {
+        try { sessionStorage.removeItem("crewhive_pending_phone"); } catch (_) {}
+      }
       return { success: true, user: credential.user, phone, role: data.role, approved: data.approved };
     } catch (err) {
       return { success: false, error: err.message || "Verification failed." };
@@ -196,7 +231,7 @@ export const verifyOtp = async (code) => {
 
 // ─── Fetch user role (post-login) ─────────────────────────────────────────────
 export const fetchUserRole = async (phone) => {
-  const res = await fetch("/api/auth/initialize", {
+  const res = await apiFetch("/api/auth/initialize", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ phone, checkOnly: false }),

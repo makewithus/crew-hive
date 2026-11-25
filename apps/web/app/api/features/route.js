@@ -1,41 +1,8 @@
-/**
- * GET /api/features
- * Returns the current platform feature access tier and configuration.
- */
+/** ./features — thin proxy to the shared Express backend (no business logic, no Firestore access). */
+import { proxy, readJson, digits, NextResponse, callExpress, legacyError } from "../../../lib/express-proxy.js";
 
-import { NextResponse } from "next/server";
-import { adminDb } from "@/lib/firebase-admin";
-import { DEFAULT_FEATURE_CONFIG, checkFeatureAccess, FEATURES } from "@/lib/feature-access";
+export const dynamic = "force-dynamic";
 
 export async function GET(request) {
-  try {
-    const db = adminDb();
-    let config = { ...DEFAULT_FEATURE_CONFIG };
-
-    // Check if platform settings in Firestore override defaults
-    try {
-      const snap = await db.collection("settings").doc("feature_access").get();
-      if (snap.exists) {
-        config = { ...config, ...snap.data() };
-      }
-    } catch (_) {}
-
-    return NextResponse.json({
-      success: true,
-      data: {
-        activeTier: config.activeTier,
-        trialDurationDays: config.trialDurationDays,
-        gatedFeatures: config.gatedFeatures,
-        supportContact: config.supportContact,
-        inquiryWhatsapp: config.inquiryWhatsapp,
-      },
-    });
-  } catch (err) {
-    console.error("[/api/features] error:", err);
-    return NextResponse.json(
-      { success: false, error: err.message },
-      { status: 500 }
-    );
-  }
+  return proxy(request, { method: "GET", path: "/features", map: (d) => ({ success: true, data: { activeTier: d.activeTier, trialDurationDays: d.trialDurationDays, gatedFeatures: d.gatedFeatures, supportContact: d.supportContact, inquiryWhatsapp: d.inquiryWhatsapp, access: d.access, trialDaysRemaining: d.trialDaysRemaining } }) });
 }
-

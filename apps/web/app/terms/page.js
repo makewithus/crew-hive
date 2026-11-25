@@ -5,7 +5,7 @@ import PublicNavbar from "@/components/PublicNavbar";
 import Footer from "@/components/Footer";
 import SignUpModal from "@/components/SignUpModal";
 import { useLanguage } from "@/context/LanguageContext";
-import { ShieldAlert, FileText, CheckCircle2 } from "lucide-react";
+import { FileText, CheckCircle2 } from "lucide-react";
 
 export default function TermsPage() {
   const { t, getSection, isMalayalam } = useLanguage();

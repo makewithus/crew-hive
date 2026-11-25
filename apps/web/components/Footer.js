@@ -6,7 +6,6 @@ import LanguageToggle from "@/components/LanguageToggle";
 import { WhatsAppBrandIcon } from "@/components/icons/AvIcons";
 import {
   Mail,
-  Shield,
   Layers,
   Calendar,
   ExternalLink,
@@ -105,7 +104,7 @@ export default function Footer({ onOpenSignUp = null }) {
                   href={whatsappUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="py-1 inline-block hover:text-primary transition-colors text-muted-foreground text-xs min-h-[36px] sm:min-h-0 flex items-center"
+                  className="py-1 inline-block hover:text-primary transition-colors min-h-[36px] sm:min-h-0 flex items-center"
                 >
                   {t("footer.joinWhatsApp", "Sign up via WhatsApp")}
                 </a>
@@ -179,6 +178,11 @@ export default function Footer({ onOpenSignUp = null }) {
               </Link>
             </li>
             <li>
+              <Link href="/account-deletion" className="py-1 inline-block hover:text-primary transition-colors min-h-[36px] sm:min-h-0 flex items-center">
+                {t("footer.accountDeletion", "Account Deletion")}
+              </Link>
+            </li>
+            <li>
               <Link href="/contact" className="py-1 inline-block hover:text-primary transition-colors min-h-[36px] sm:min-h-0 flex items-center">
                 {t("footer.contact", "Contact Us")}
               </Link>
@@ -200,6 +204,10 @@ export default function Footer({ onOpenSignUp = null }) {
             <span aria-hidden="true">·</span>
             <Link href="/privacy" className="py-1 inline-block hover:text-foreground transition-colors">
               {t("footer.privacy", "Privacy")}
+            </Link>
+            <span aria-hidden="true">·</span>
+            <Link href="/account-deletion" className="py-1 inline-block hover:text-foreground transition-colors">
+              {t("footer.deletion", "Delete Account")}
             </Link>
             <span aria-hidden="true">·</span>
             <Link href="/contact" className="py-1 inline-block hover:text-foreground transition-colors">

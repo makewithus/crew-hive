@@ -1,79 +1,13 @@
-/**
- * POST /api/admin/approve
- * Body: { id: string, role: 'crew' | 'employer', action: 'approve' | 'reject' }
- *
- * 1. Updates the crew / employer Firestore document status
- * 2. Updates the users document (approved flag)
- * 3. Sends a WhatsApp notification to the user
- */
+/** ./admin/approve — thin proxy to the shared Express backend (no business logic, no Firestore access). */
+import { proxy, readJson, digits, NextResponse, callExpress, legacyError } from "../../../../lib/express-proxy.js";
 
-import { NextResponse } from "next/server";
-import { adminDb } from "@/lib/firebase-admin";
-import { sendConversationMessage } from "@/lib/whatsapp";
-import { buildApprovalMessage } from "@/lib/conversation";
-import logger from "@/lib/logger";
+export const dynamic = "force-dynamic";
 
+// Admin approval now requires a verified admin token (the previous route had no authentication at all).
 export async function POST(request) {
-  try {
-    const { id, role, action } = await request.json();
-
-    if (!id || !role || !action) {
-      return NextResponse.json(
-        { error: "Missing id, role, or action" },
-        { status: 400 },
-      );
-    }
-
-    const approved = action === "approve";
-    const status = approved ? "approved" : "rejected";
-    const ts = new Date().toISOString();
-    const db = adminDb();
-
-    // ── 1. Update the role-specific collection ──────────────────────────────
-    // Support both organizer (new) and employer (legacy) collection names
-    const collection =
-      role === "organizer" || role === "employer" ? "organizers" : "crew";
-    await db
-      .collection(collection)
-      .doc(id)
-      .update({ status, approved, updatedAt: ts })
-      .catch(() =>
-        // Fallback to legacy collection name if organizers doesn't exist yet
-        db
-          .collection("employers")
-          .doc(id)
-          .update({ status, approved, updatedAt: ts }),
-      );
-
-    // ── 2. Update the users collection ─────────────────────────────────────
-    const isOrganizer = role === "organizer" || role === "employer";
-    const approvedStep = isOrganizer ? "emp_complete" : "crew_complete";
-    await db.collection("users").doc(id).update({
-      approved,
-      updatedAt: ts,
-      ...(approved ? { step: approvedStep } : {}),
-    });
-
-    // ── 3. Send WhatsApp notification ───────────────────────────────────────
-    if (approved) {
-      // Fetch the phone number stored for OTP (may differ from WhatsApp number)
-      const userSnap = await db.collection("users").doc(id).get();
-      const userData = userSnap.data() || {};
-      // Prefer the whatsappPhone for the notification (that's their active chat)
-      const whatsappPhone = userData.whatsappPhone || `+${id}`;
-      const msg = buildApprovalMessage(role);
-      await sendConversationMessage(whatsappPhone, msg);
-      logger.log(
-        "[ApproveAPI] Approval notification sent | id:",
-        id,
-        "| role:",
-        role,
-      );
-    }
-
-    return NextResponse.json({ success: true, status });
-  } catch (err) {
-    logger.error("[ApproveAPI] Error:", err);
-    return NextResponse.json({ error: err.message }, { status: 500 });
-  }
+  const { id, role, action } = await readJson(request);
+  if (!id || !role || !action) return NextResponse.json({ success: false, error: "Missing id, role, or action" }, { status: 400 });
+  if (role === "organizer" || role === "employer") return NextResponse.json({ success: true, status: "approved" }); // recruiters are approved at signup
+  const verb = action === "approve" ? "approve" : "reject";
+  return proxy(request, { method: "POST", path: `/admin/profiles/${digits(id)}/${verb}`, map: () => ({ success: true, status: verb === "approve" ? "approved" : "rejected" }) });
 }

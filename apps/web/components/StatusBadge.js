@@ -1,46 +1,86 @@
 'use client';
 
 import { formatStatus } from '@/utils/formatting';
-import { CREW_STATUS, BOOKING_STATUS, COLORS } from '@/utils/constants';
+import {
+  CheckCircle2,
+  Clock,
+  XCircle,
+  UserCheck,
+  HelpCircle,
+  Ban,
+  Check,
+} from 'lucide-react';
 
-export const StatusBadge = ({ status, type = 'crew' }) => {
-  const getStatusStyles = () => {
-    if (type === 'crew') {
-      switch (status) {
-        case CREW_STATUS.APPROVED:
-          return 'bg-green-100 text-green-800 border border-green-300';
-        case CREW_STATUS.PENDING:
-          return 'bg-yellow-100 text-yellow-800 border border-yellow-300';
-        case CREW_STATUS.REJECTED:
-          return 'bg-red-100 text-red-800 border border-red-300';
-        default:
-          return 'bg-gray-100 text-gray-800 border border-gray-300';
-      }
+export const StatusBadge = ({ status, type = 'crew', className = '' }) => {
+  const s = String(status || '').toLowerCase().trim();
+
+  const getBadgeConfig = () => {
+    switch (s) {
+      case 'confirmed_match':
+      case 'confirmed':
+        return {
+          icon: UserCheck,
+          styles: 'bg-primary/10 text-primary border-primary/30',
+          label: 'Confirmed Match',
+        };
+      case 'approved':
+      case 'accepted':
+      case 'available':
+        return {
+          icon: CheckCircle2,
+          styles: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30',
+          label: s === 'approved' ? 'Approved' : 'Accepted',
+        };
+      case 'pending':
+        return {
+          icon: Clock,
+          styles: 'bg-amber-500/10 text-amber-400 border-amber-500/30',
+          label: 'Pending',
+        };
+      case 'declined':
+      case 'rejected':
+        return {
+          icon: XCircle,
+          styles: 'bg-rose-500/10 text-rose-400 border-rose-500/30',
+          label: s === 'declined' ? 'Declined' : 'Rejected',
+        };
+      case 'no_response':
+      case 'expired':
+        return {
+          icon: HelpCircle,
+          styles: 'bg-zinc-800/80 text-zinc-400 border-zinc-700',
+          label: s === 'no_response' ? 'No Response' : 'Expired',
+        };
+      case 'cancelled':
+        return {
+          icon: Ban,
+          styles: 'bg-zinc-800/80 text-zinc-400 border-zinc-700',
+          label: 'Cancelled',
+        };
+      case 'completed':
+        return {
+          icon: Check,
+          styles: 'bg-blue-500/10 text-blue-400 border-blue-500/30',
+          label: 'Completed',
+        };
+      default:
+        return {
+          icon: null,
+          styles: 'bg-zinc-800 text-zinc-300 border-zinc-700',
+          label: formatStatus(status),
+        };
     }
-
-    if (type === 'booking') {
-      switch (status) {
-        case BOOKING_STATUS.ACCEPTED:
-          return 'bg-green-100 text-green-800 border border-green-300';
-        case BOOKING_STATUS.PENDING:
-          return 'bg-yellow-100 text-yellow-800 border border-yellow-300';
-        case BOOKING_STATUS.REJECTED:
-          return 'bg-red-100 text-red-800 border border-red-300';
-        case BOOKING_STATUS.COMPLETED:
-          return 'bg-blue-100 text-blue-800 border border-blue-300';
-        case BOOKING_STATUS.CANCELLED:
-          return 'bg-gray-100 text-gray-800 border border-gray-300';
-        default:
-          return 'bg-gray-100 text-gray-800 border border-gray-300';
-      }
-    }
-
-    return 'bg-gray-100 text-gray-800 border border-gray-300';
   };
 
+  const config = getBadgeConfig();
+  const Icon = config.icon;
+
   return (
-    <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${getStatusStyles()}`}>
-      {formatStatus(status)}
+    <span
+      className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold border ${config.styles} ${className}`}
+    >
+      {Icon && <Icon className="w-3.5 h-3.5 shrink-0" />}
+      <span>{config.label}</span>
     </span>
   );
 };

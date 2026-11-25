@@ -14,6 +14,7 @@
 
 "use client";
 
+import { apiFetch } from "@/lib/api-client";
 import { useState } from "react";
 import Link from "next/link";
 import { useLanguage } from "@/context/LanguageContext";
@@ -21,9 +22,8 @@ import {
   MapPin,
   Clock,
   IndianRupee,
-  ShieldCheck,
+  Award,
   Bookmark,
-  Send,
   Eye,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -62,7 +62,7 @@ export const CrewCard = ({
 
     try {
       if (saved) {
-        const res = await fetch(`/api/recruiter/shortlist?crewId=${crew.id}`, {
+        const res = await apiFetch(`/api/recruiter/shortlist?crewId=${crew.id}`, {
           method: "DELETE",
         });
         if (res.ok) {
@@ -71,7 +71,7 @@ export const CrewCard = ({
           if (onShortlistChange) onShortlistChange(crew.id, false);
         }
       } else {
-        const res = await fetch("/api/recruiter/shortlist", {
+        const res = await apiFetch("/api/recruiter/shortlist", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -140,8 +140,8 @@ export const CrewCard = ({
             )}
             {crew.associationMember && (
               <span className="inline-flex items-center gap-1 text-[11px] font-medium text-amber-400 bg-amber-400/10 border border-amber-400/20 px-1.5 py-0.5 rounded-md">
-                <ShieldCheck className="w-3 h-3" />
-                {crew.associationName ? `${crew.associationName}` : (isMalayalam ? "അംഗീകൃത അംഗം" : "Verified Member")}
+                <Award className="w-3 h-3" />
+                {crew.associationName ? `${crew.associationName}` : (isMalayalam ? "അസോസിയേഷൻ അംഗം" : "Association Member")}
               </span>
             )}
           </div>
@@ -235,9 +235,8 @@ export const CrewCard = ({
             <button
               type="button"
               onClick={() => onSendRequest(crew)}
-              className="text-xs font-semibold bg-primary text-primary-foreground hover:bg-primary/90 px-3 py-2 rounded-xl transition-all flex items-center gap-1"
+              className="text-xs font-semibold bg-primary text-primary-foreground hover:bg-primary/90 px-3.5 py-2 rounded-xl transition-all"
             >
-              <Send className="w-3 h-3" />
               {isMalayalam ? "റിക്വസ്റ്റ്" : "Request"}
             </button>
           )}

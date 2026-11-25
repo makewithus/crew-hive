@@ -4,6 +4,7 @@ import { cookies } from 'next/headers'
 import { Analytics } from '@vercel/analytics/next'
 import { AuthProvider } from '@/hooks/useAuth'
 import { LanguageProvider } from '@/context/LanguageContext'
+import SessionTimeoutManager from '@/components/SessionTimeoutManager'
 import { Toaster } from 'sonner'
 import './globals.css'
 
@@ -59,6 +60,7 @@ export default async function RootLayout({
         <AuthProvider>
           <LanguageProvider initialLocale={initialLang}>
             {children}
+            <SessionTimeoutManager />
           </LanguageProvider>
         </AuthProvider>
         <Toaster
@@ -66,7 +68,11 @@ export default async function RootLayout({
           position="top-right"
           richColors
           closeButton
-          toastOptions={{ style: { fontFamily: 'var(--font-inter), "Helvetica Neue", Helvetica, Arial, sans-serif' } }}
+          duration={3500}
+          toastOptions={{
+            duration: 3500,
+            style: { fontFamily: 'var(--font-inter), "Helvetica Neue", Helvetica, Arial, sans-serif' }
+          }}
         />
         {process.env.NODE_ENV === 'production' && <Analytics />}
       </body>

@@ -72,7 +72,7 @@ export default function AdminDashboard() {
           process.env.NEXT_PUBLIC_APP_URL || "https://crewhive.app";
         await sendTextMessage(
           crew.id,
-          `🎉 *Congratulations, ${crew.name || "Crew Member"}!*\n\nYour CrewHive profile has been *approved*. You can now log in and start getting booked!\n\n👉 Log in at: ${appUrl}/login`,
+          `*Congratulations, ${crew.name || "Crew Member"}!*\n\nYour CrewHive profile has been *approved*. You can now log in and start getting booked!\n\nLog in at: ${appUrl}/login`,
         );
         showToast(`${crew.name || crew.id} approved!`);
       } else {

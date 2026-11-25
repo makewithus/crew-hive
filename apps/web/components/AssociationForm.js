@@ -1,5 +1,6 @@
 "use client";
 
+import { apiFetch } from "@/lib/api-client";
 import { useState } from "react";
 import { useLanguage } from "@/context/LanguageContext";
 import {
@@ -133,7 +134,7 @@ export default function AssociationForm({ onOpenSignUp = null }) {
 
     try {
       // Call the association inquiry boundary endpoint
-      const response = await fetch("/api/associations/inquiry", {
+      const response = await apiFetch("/api/associations/inquiry", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

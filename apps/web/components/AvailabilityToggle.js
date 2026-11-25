@@ -1,17 +1,19 @@
 "use client";
 
-import { useState } from "react";
+import { apiFetch } from "@/lib/api-client";
+import { useState, useEffect } from "react";
 import { useLanguage } from "@/context/LanguageContext";
 import { CITIES } from "@/utils/taxonomy";
 import { toast } from "sonner";
 import {
   MapPin,
-  ShieldCheck,
+  Lock,
   Clock,
   AlertCircle,
   CheckCircle2,
   X,
   Compass,
+  ChevronDown,
 } from "lucide-react";
 
 export default function AvailabilityToggle({
@@ -34,6 +36,24 @@ export default function AvailabilityToggle({
   const [coarseCoords, setCoarseCoords] = useState(null);
   const [permissionDenied, setPermissionDenied] = useState(false);
 
+  // Lock body scroll when modal is open to prevent background movement
+  useEffect(() => {
+    if (modalOpen) {
+      const origHtmlOverflow = document.documentElement.style.overflow;
+      const origBodyOverflow = document.body.style.overflow;
+      document.documentElement.classList.add("modal-open");
+      document.body.classList.add("modal-open");
+      document.documentElement.style.overflow = "hidden";
+      document.body.style.overflow = "hidden";
+      return () => {
+        document.documentElement.classList.remove("modal-open");
+        document.body.classList.remove("modal-open");
+        document.documentElement.style.overflow = origHtmlOverflow;
+        document.body.style.overflow = origBodyOverflow;
+      };
+    }
+  }, [modalOpen]);
+
   // When user clicks the toggle
   const handleToggleClick = () => {
     if (disabled || loading) return;
@@ -52,7 +72,7 @@ export default function AvailabilityToggle({
   // Turn Availability OFF
   const handleConfirmOff = async () => {
     try {
-      const res = await fetch("/api/crew/availability", {
+      const res = await apiFetch("/api/crew/availability", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -130,7 +150,7 @@ export default function AvailabilityToggle({
     setLocError("");
 
     try {
-      const res = await fetch("/api/crew/availability", {
+      const res = await apiFetch("/api/crew/availability", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -297,7 +317,7 @@ export default function AvailabilityToggle({
             {/* Privacy Explanation */}
             <div className="p-3.5 rounded-xl bg-muted/60 border border-border space-y-2 text-xs">
               <div className="flex items-center gap-1.5 font-bold text-foreground">
-                <ShieldCheck className="w-4 h-4 text-green-400" />
+                <Lock className="w-4 h-4 text-green-400" />
                 <span>{t("availability.whyLocationTitle", "Why Location is Needed")}</span>
               </div>
               <p className="text-muted-foreground leading-relaxed">
@@ -329,10 +349,15 @@ export default function AvailabilityToggle({
                 className="w-full py-2.5 px-3.5 rounded-xl bg-muted border border-border hover:border-primary/60 text-foreground font-semibold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer"
               >
                 <Compass className="w-4 h-4 text-primary" />
-                <span>
-                  {coarseCoords
-                    ? (isMl ? "✓ ഏകദേശ ലൊക്കേഷൻ കണ്ടെത്തി" : "✓ Coarse Coordinates Obtained")
-                    : t("availability.requestGps", "Use My Current Coarse Location")}
+                <span className="flex items-center gap-1.5">
+                  {coarseCoords ? (
+                    <>
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                      <span>{isMl ? "ഏകദേശ ലൊക്കേഷൻ കണ്ടെത്തി" : "Coarse Coordinates Obtained"}</span>
+                    </>
+                  ) : (
+                    <span>{t("availability.requestGps", "Use My Current Coarse Location")}</span>
+                  )}
                 </span>
               </button>
             </div>
@@ -342,20 +367,23 @@ export default function AvailabilityToggle({
               <label className="block text-xs font-semibold text-muted-foreground">
                 {t("availability.manualCityLabel", "Confirm Current Working City")}
               </label>
-              <select
-                value={selectedCity}
-                onChange={(e) => {
-                  setSelectedCity(e.target.value);
-                  setLocError("");
-                }}
-                className="w-full bg-muted border border-border text-foreground rounded-xl px-3.5 py-2.5 text-xs font-medium outline-none focus:border-primary"
-              >
-                {CITIES.map((c) => (
-                  <option key={c.id} value={c.nameEn}>
-                    {isMl ? c.nameMl : c.nameEn} ({isMl ? c.nameEn : c.nameMl})
-                  </option>
-                ))}
-              </select>
+              <div className="relative">
+                <select
+                  value={selectedCity}
+                  onChange={(e) => {
+                    setSelectedCity(e.target.value);
+                    setLocError("");
+                  }}
+                  className="w-full appearance-none bg-muted/90 border border-border text-foreground rounded-xl pl-3.5 pr-10 py-2.5 text-xs font-medium outline-none focus:border-primary transition-all cursor-pointer hover:border-zinc-500"
+                >
+                  {CITIES.map((c) => (
+                    <option key={c.id} value={c.nameEn}>
+                      {isMl ? c.nameMl : c.nameEn} ({isMl ? c.nameEn : c.nameMl})
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown className="w-4 h-4 text-muted-foreground pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2" />
+              </div>
             </div>
 
             {/* Expiry Note */}

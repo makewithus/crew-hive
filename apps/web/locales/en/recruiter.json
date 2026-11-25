@@ -44,7 +44,7 @@
     "rateOnRequest": "Rate on request",
     "availableNow": "Available Now",
     "busy": "Busy / Unavailable",
-    "verifiedMember": "Verified Member",
+    "associationMember": "Association Member",
     "sendRequest": "Send Availability Request",
     "whatsapp": "WhatsApp",
     "call": "Call",

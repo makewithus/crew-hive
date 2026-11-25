@@ -13,6 +13,7 @@
 
 "use client";
 
+import { apiFetch } from "@/lib/api-client";
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -30,7 +31,7 @@ import { Input } from "@/components/ui/input";
 import {
   BarChart3,
   Users,
-  ShieldAlert,
+  Flag,
   Sliders,
   MapPin,
   Building,
@@ -40,7 +41,7 @@ import {
   Eye,
   EyeOff,
   Edit3,
-  RefreshCw,
+  Download,
   Plus,
   Trash2,
   FileText,
@@ -71,6 +72,17 @@ export default function AdminDashboardPage() {
   const [profileFilter, setProfileFilter] = useState("all"); // all, pending, approved, hidden
   const [profileLoading, setProfileLoading] = useState(false);
   const [editingProfile, setEditingProfile] = useState(null);
+
+  // Lock body scroll when editing modal is open
+  useEffect(() => {
+    if (editingProfile) {
+      const orig = document.body.style.overflow;
+      document.body.style.overflow = "hidden";
+      return () => {
+        document.body.style.overflow = orig;
+      };
+    }
+  }, [editingProfile]);
   const [editRoleVal, setEditRoleVal] = useState("");
   const [editCityVal, setEditCityVal] = useState("");
 
@@ -120,7 +132,7 @@ export default function AdminDashboardPage() {
     setMetricsLoading(true);
     try {
       const token = await auth.currentUser?.getIdToken();
-      const res = await fetch("/api/admin/metrics", {
+      const res = await apiFetch("/api/admin/metrics", {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
       const json = await res.json();
@@ -137,7 +149,7 @@ export default function AdminDashboardPage() {
     setProfileLoading(true);
     try {
       const token = await auth.currentUser?.getIdToken();
-      const res = await fetch(`/api/admin/profiles?filter=${profileFilter}`, {
+      const res = await apiFetch(`/api/admin/profiles?filter=${profileFilter}`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
       const json = await res.json();
@@ -152,7 +164,7 @@ export default function AdminDashboardPage() {
   const handleProfileApproval = async (id, action) => {
     try {
       const token = await auth.currentUser?.getIdToken();
-      const res = await fetch("/api/admin/profiles", {
+      const res = await apiFetch("/api/admin/profiles", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -175,7 +187,7 @@ export default function AdminDashboardPage() {
   const handleToggleHide = async (id) => {
     try {
       const token = await auth.currentUser?.getIdToken();
-      const res = await fetch("/api/admin/profiles", {
+      const res = await apiFetch("/api/admin/profiles", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -197,7 +209,7 @@ export default function AdminDashboardPage() {
     if (!editingProfile) return;
     try {
       const token = await auth.currentUser?.getIdToken();
-      const res = await fetch("/api/admin/profiles", {
+      const res = await apiFetch("/api/admin/profiles", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -225,7 +237,7 @@ export default function AdminDashboardPage() {
     setReportsLoading(true);
     try {
       const token = await auth.currentUser?.getIdToken();
-      const res = await fetch("/api/admin/reports", {
+      const res = await apiFetch("/api/admin/reports", {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
       const json = await res.json();
@@ -240,7 +252,7 @@ export default function AdminDashboardPage() {
   const handleResolveReport = async (reportId, moderationAction) => {
     try {
       const token = await auth.currentUser?.getIdToken();
-      const res = await fetch("/api/admin/reports", {
+      const res = await apiFetch("/api/admin/reports", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -267,7 +279,7 @@ export default function AdminDashboardPage() {
   const loadRoles = async () => {
     setRolesLoading(true);
     try {
-      const res = await fetch("/api/taxonomy/roles");
+      const res = await apiFetch("/api/taxonomy/roles");
       const json = await res.json();
       if (json.success) setRolesList(json.data || []);
     } catch (_) {
@@ -283,7 +295,7 @@ export default function AdminDashboardPage() {
     try {
       const token = await auth.currentUser?.getIdToken();
       const roleId = newRoleNameEn.toLowerCase().replace(/[^a-z0-9]/g, "_");
-      const res = await fetch("/api/taxonomy/roles", {
+      const res = await apiFetch("/api/taxonomy/roles", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -315,7 +327,7 @@ export default function AdminDashboardPage() {
   const loadCities = async () => {
     setCitiesLoading(true);
     try {
-      const res = await fetch("/api/taxonomy/cities");
+      const res = await apiFetch("/api/taxonomy/cities");
       const json = await res.json();
       if (json.success) setCitiesList(json.data || []);
     } catch (_) {
@@ -331,7 +343,7 @@ export default function AdminDashboardPage() {
     try {
       const token = await auth.currentUser?.getIdToken();
       const cityId = newCityEn.toLowerCase().replace(/[^a-z0-9]/g, "_");
-      const res = await fetch("/api/taxonomy/cities", {
+      const res = await apiFetch("/api/taxonomy/cities", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -363,14 +375,34 @@ export default function AdminDashboardPage() {
     setAssocLoading(true);
     try {
       const token = await auth.currentUser?.getIdToken();
-      const res = await fetch("/api/admin/associations", {
+      const res = await apiFetch("/api/admin/associations", {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
       const json = await res.json();
       if (json.success) {
-        setAssociations(json.data || []);
-        if (json.data?.length > 0 && !selectedAssocForImport) {
-          setSelectedAssocForImport(json.data[0].id);
+        const list = json.data || [];
+        setAssociations(list);
+        if (list.length > 0 && !selectedAssocForImport) {
+          setSelectedAssocForImport(list[0].id);
+        } else if (list.length === 0) {
+          try {
+            const createRes = await apiFetch("/api/admin/associations", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                ...(token ? { Authorization: `Bearer ${token}` } : {}),
+              },
+              body: JSON.stringify({
+                name: "FEFKA Directors Union",
+                code: "FEFKA2026",
+              }),
+            });
+            const created = await createRes.json();
+            if (created.success && created.data) {
+              setAssociations([created.data]);
+              setSelectedAssocForImport(created.data.id);
+            }
+          } catch (_) {}
         }
       }
     } catch (_) {
@@ -386,7 +418,7 @@ export default function AdminDashboardPage() {
     setCreatingAssoc(true);
     try {
       const token = await auth.currentUser?.getIdToken();
-      const res = await fetch("/api/admin/associations", {
+      const res = await apiFetch("/api/admin/associations", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -439,17 +471,52 @@ export default function AdminDashboardPage() {
     reader.readAsText(file);
   };
 
+  const downloadCsvTemplate = () => {
+    const csvContent =
+      "Name,Phone,Role,City\n" +
+      "Suresh Kumar,9847123456,Sound Engineer,Kochi\n" +
+      "Rahul Menon,9846234567,Lighting Technician,Thiruvananthapuram\n" +
+      "Anjali Nair,9895345678,Camera Operator,Kozhikode\n" +
+      "Fahad Basheer,9744456789,LED Wall Tech,Thrissur\n" +
+      "Nikhil George,9447567890,Stage Manager,Kollam\n" +
+      "Deepak Raj,9526678901,Rigging Tech,Kannur\n" +
+      "Vineeth Pillai,9633789012,Video Switching,Palakkad\n" +
+      "Midhun Das,9895890123,Drone Pilot,Alappuzha\n" +
+      "Sanju Varghese,9400901234,Backline Tech,Kottayam\n" +
+      "Arun Chandran,9745012345,Production Assistant,Malappuram\n";
+
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute("download", "crewhive_member_import_template.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    toast.success("CSV template downloaded with required fields: Name, Phone, Role, City");
+  };
+
   const generateCsvPreview = async (csvText) => {
     try {
+      let assocId = selectedAssocForImport;
+      if (!assocId && associations.length > 0) {
+        assocId = associations[0].id;
+        setSelectedAssocForImport(assocId);
+      }
+      if (!assocId) {
+        toast.error("Please create or select an association first before importing CSV.");
+        return;
+      }
       const token = await auth.currentUser?.getIdToken();
-      const res = await fetch("/api/admin/associations/import", {
+      const res = await apiFetch("/api/admin/associations/import", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
         body: JSON.stringify({
-          associationId: selectedAssocForImport,
+          associationId: assocId,
           csvText,
           action: "preview",
         }),
@@ -471,7 +538,7 @@ export default function AdminDashboardPage() {
     setImporting(true);
     try {
       const token = await auth.currentUser?.getIdToken();
-      const res = await fetch("/api/admin/associations/import", {
+      const res = await apiFetch("/api/admin/associations/import", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -528,7 +595,7 @@ export default function AdminDashboardPage() {
                 {[
                   { id: "metrics", label: "Metrics", icon: <BarChart3 className="w-3.5 h-3.5" /> },
                   { id: "profiles", label: "Profiles & Approvals", icon: <Users className="w-3.5 h-3.5" /> },
-                  { id: "reports", label: "Report Moderation", icon: <ShieldAlert className="w-3.5 h-3.5" /> },
+                  { id: "reports", label: "Report Moderation", icon: <Flag className="w-3.5 h-3.5" /> },
                   { id: "roles", label: "Roles", icon: <Sliders className="w-3.5 h-3.5" /> },
                   { id: "cities", label: "Cities", icon: <MapPin className="w-3.5 h-3.5" /> },
                   { id: "associations", label: "Associations & CSV", icon: <Building className="w-3.5 h-3.5" /> },
@@ -564,16 +631,6 @@ export default function AdminDashboardPage() {
                     Derived from genuine database records. No mock or placeholder numbers.
                   </p>
                 </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={loadMetrics}
-                  disabled={metricsLoading}
-                  className="gap-2 text-xs"
-                >
-                  <RefreshCw className={`w-3.5 h-3.5 ${metricsLoading ? "animate-spin" : ""}`} />
-                  Refresh Metrics
-                </Button>
               </div>
 
               {metricsLoading || !metrics ? (
@@ -851,10 +908,6 @@ export default function AdminDashboardPage() {
                     Investigate submitted reports against technician or recruiter profiles.
                   </p>
                 </div>
-                <Button variant="outline" size="sm" onClick={loadReports} className="text-xs">
-                  <RefreshCw className="w-3.5 h-3.5 mr-1.5" />
-                  Refresh Reports
-                </Button>
               </div>
 
               {reportsLoading ? (
@@ -1143,14 +1196,24 @@ export default function AdminDashboardPage() {
 
               {/* ── CSV BULK IMPORT WORKSPACE (SECTION 16) ───────────────────── */}
               <div className="bg-card border border-border rounded-2xl p-6 space-y-6 shadow-xs">
-                <div>
-                  <h3 className="text-sm font-bold flex items-center gap-2">
-                    <UploadCloud className="w-4 h-4 text-primary" />
-                    Bulk Member Import (CSV)
-                  </h3>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Upload member CSV to validate rows, check duplicates, preview records, and dispatch WhatsApp invites.
-                  </p>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div>
+                    <h3 className="text-sm font-bold flex items-center gap-2">
+                      <UploadCloud className="w-4 h-4 text-primary" />
+                      Bulk Member Import (CSV)
+                    </h3>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Upload member CSV to validate rows, check duplicates, preview records, and dispatch WhatsApp invites.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={downloadCsvTemplate}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-xl bg-primary/10 border border-primary/30 text-primary hover:bg-primary/20 transition-all cursor-pointer w-fit shrink-0"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    Download CSV Template
+                  </button>
                 </div>
 
                 {/* Target Association Selector */}

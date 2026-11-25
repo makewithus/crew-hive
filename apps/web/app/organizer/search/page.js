@@ -15,13 +15,13 @@
 
 "use client";
 
+import { apiFetch } from "@/lib/api-client";
 import { useState, useEffect, useCallback, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import Header from "@/components/Header";
 import AuthGuard from "@/components/AuthGuard";
 import CrewCard from "@/components/CrewCard";
-import LanguageToggle from "@/components/LanguageToggle";
 import { useLanguage } from "@/context/LanguageContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -86,9 +86,9 @@ function SearchContent() {
     async function loadTaxonomy() {
       try {
         const [rolesRes, citiesRes, featRes] = await Promise.all([
-          fetch("/api/taxonomy/roles"),
-          fetch("/api/taxonomy/cities"),
-          fetch("/api/features"),
+          apiFetch("/api/taxonomy/roles"),
+          apiFetch("/api/taxonomy/cities"),
+          apiFetch("/api/features"),
         ]);
         const rolesJson = await rolesRes.json();
         const citiesJson = await citiesRes.json();
@@ -103,6 +103,24 @@ function SearchContent() {
     }
     loadTaxonomy();
   }, []);
+
+  // Lock body scroll when request modal is open
+  useEffect(() => {
+    if (requestModalCrew) {
+      const origHtmlOverflow = document.documentElement.style.overflow;
+      const origBodyOverflow = document.body.style.overflow;
+      document.documentElement.classList.add("modal-open");
+      document.body.classList.add("modal-open");
+      document.documentElement.style.overflow = "hidden";
+      document.body.style.overflow = "hidden";
+      return () => {
+        document.documentElement.classList.remove("modal-open");
+        document.body.classList.remove("modal-open");
+        document.documentElement.style.overflow = origHtmlOverflow;
+        document.body.style.overflow = origBodyOverflow;
+      };
+    }
+  }, [requestModalCrew]);
 
   // Sync available specialisations based on selected parent role
   const selectedParentRoleObj = rolesTaxonomy.find(
@@ -133,7 +151,7 @@ function SearchContent() {
         // Preserve URL state
         router.replace(`/organizer/search?${params.toString()}`, { scroll: false });
 
-        const res = await fetch(`/api/crew/search?${params.toString()}`);
+        const res = await apiFetch(`/api/crew/search?${params.toString()}`);
         const json = await res.json();
 
         if (json.success) {
@@ -183,7 +201,7 @@ function SearchContent() {
 
     setSendingRequest(true);
     try {
-      const res = await fetch("/api/requests/create", {
+      const res = await apiFetch("/api/requests/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -221,18 +239,15 @@ function SearchContent() {
       {/* Hero Search Header */}
       <div className="bg-card border-b border-border">
         <div className="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div>
-              <h1 className="text-3xl font-extrabold tracking-tight">
-                {isMalayalam ? "ക്രൂവിനെ കണ്ടെത്തുക" : "Search Professional Crew"}
-              </h1>
-              <p className="text-sm text-muted-foreground mt-1">
-                {isMalayalam
-                  ? "ലൈവ് ഇവന്റുകൾക്കും മീഡിയ പ്രൊഡക്ഷനുകൾക്കുമായി കേരളത്തിലെ സാങ്കേതിക വിദഗ്ദ്ധരെ കണ്ടെത്തുക"
-                  : "Find vetted sound, lighting, stage, video, and camera technicians across Kerala."}
-              </p>
-            </div>
-            <LanguageToggle compact />
+          <div>
+            <h1 className="text-3xl font-extrabold tracking-tight">
+              {isMalayalam ? "ക്രൂവിനെ കണ്ടെത്തുക" : "Search Professional Crew"}
+            </h1>
+            <p className="text-sm text-muted-foreground mt-1">
+              {isMalayalam
+                ? "ലൈവ് ഇവന്റുകൾക്കും മീഡിയ പ്രൊഡക്ഷനുകൾക്കുമായി കേരളത്തിലെ സാങ്കേതിക വിദഗ്ദ്ധരെ കണ്ടെത്തുക"
+                : "Find vetted sound, lighting, stage, video, and camera technicians across Kerala."}
+            </p>
           </div>
         </div>
       </div>
@@ -262,21 +277,26 @@ function SearchContent() {
                 <label className="block text-xs font-semibold mb-2">
                   {isMalayalam ? "പ്രൊഫഷണൽ റോൾ (വിഭാഗം)" : "Professional Role"}
                 </label>
-                <select
-                  value={role}
-                  onChange={(e) => {
-                    setRole(e.target.value);
-                    setSpecialisation("");
-                  }}
-                  className="w-full bg-muted border border-border rounded-xl px-3 py-2.5 text-sm focus:border-primary outline-none"
-                >
-                  <option value="">{isMalayalam ? "എല്ലാ റോളുകളും" : "All Parent Roles"}</option>
-                  {rolesTaxonomy.map((r) => (
-                    <option key={r.id} value={r.nameEn}>
-                      {isMalayalam && r.nameMl ? `${r.nameMl} (${r.nameEn})` : r.nameEn}
+                <div className="relative">
+                  <select
+                    value={role}
+                    onChange={(e) => {
+                      setRole(e.target.value);
+                      setSpecialisation("");
+                    }}
+                    className="w-full appearance-none bg-[#1A1A1A] border border-[#2A2A2A] text-foreground rounded-xl pl-3.5 pr-10 py-2.5 text-sm focus:border-primary outline-none cursor-pointer transition-colors"
+                  >
+                    <option value="" className="bg-[#141414] text-foreground">
+                      {isMalayalam ? "എല്ലാ റോളുകളും" : "All Parent Roles"}
                     </option>
-                  ))}
-                </select>
+                    {rolesTaxonomy.map((r) => (
+                      <option key={r.id} value={r.nameEn} className="bg-[#141414] text-foreground">
+                        {isMalayalam && r.nameMl ? r.nameMl : r.nameEn}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown className="w-4 h-4 text-muted-foreground absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                </div>
               </div>
 
               {/* 2. Specialisation Filter (Dynamic based on selected parent role) */}
@@ -285,20 +305,23 @@ function SearchContent() {
                   <label className="block text-xs font-semibold mb-2">
                     {isMalayalam ? "സ്പെഷ്യലൈസേഷൻ" : "Specialisation"}
                   </label>
-                  <select
-                    value={specialisation}
-                    onChange={(e) => setSpecialisation(e.target.value)}
-                    className="w-full bg-muted border border-border rounded-xl px-3 py-2.5 text-sm focus:border-primary outline-none"
-                  >
-                    <option value="">
-                      {isMalayalam ? "എല്ലാ സ്പെഷ്യലൈസേഷനുകളും" : "All Specialisations"}
-                    </option>
-                    {availableSpecialisations.map((spec) => (
-                      <option key={spec.id} value={spec.nameEn}>
-                        {isMalayalam && spec.nameMl ? `${spec.nameMl} (${spec.nameEn})` : spec.nameEn}
+                  <div className="relative">
+                    <select
+                      value={specialisation}
+                      onChange={(e) => setSpecialisation(e.target.value)}
+                      className="w-full appearance-none bg-[#1A1A1A] border border-[#2A2A2A] text-foreground rounded-xl pl-3.5 pr-10 py-2.5 text-sm focus:border-primary outline-none cursor-pointer transition-colors"
+                    >
+                      <option value="" className="bg-[#141414] text-foreground">
+                        {isMalayalam ? "എല്ലാ സ്പെഷ്യലൈസേഷനുകളും" : "All Specialisations"}
                       </option>
-                    ))}
-                  </select>
+                      {availableSpecialisations.map((spec) => (
+                        <option key={spec.id} value={spec.nameEn} className="bg-[#141414] text-foreground">
+                          {isMalayalam && spec.nameMl ? spec.nameMl : spec.nameEn}
+                        </option>
+                      ))}
+                    </select>
+                    <ChevronDown className="w-4 h-4 text-muted-foreground absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  </div>
                 </div>
               )}
 
@@ -307,18 +330,23 @@ function SearchContent() {
                 <label className="block text-xs font-semibold mb-2">
                   {isMalayalam ? "നഗരം / ജില്ല" : "Location / District"}
                 </label>
-                <select
-                  value={city}
-                  onChange={(e) => setCity(e.target.value)}
-                  className="w-full bg-muted border border-border rounded-xl px-3 py-2.5 text-sm focus:border-primary outline-none"
-                >
-                  <option value="">{isMalayalam ? "എല്ലാ നഗരങ്ങളും" : "All Kerala Locations"}</option>
-                  {citiesTaxonomy.map((c) => (
-                    <option key={c.id || c.nameEn} value={c.nameEn}>
-                      {isMalayalam && c.nameMl ? `${c.nameMl} (${c.nameEn})` : c.nameEn}
+                <div className="relative">
+                  <select
+                    value={city}
+                    onChange={(e) => setCity(e.target.value)}
+                    className="w-full appearance-none bg-[#1A1A1A] border border-[#2A2A2A] text-foreground rounded-xl pl-3.5 pr-10 py-2.5 text-sm focus:border-primary outline-none cursor-pointer transition-colors"
+                  >
+                    <option value="" className="bg-[#141414] text-foreground">
+                      {isMalayalam ? "എല്ലാ നഗരങ്ങളും" : "All Kerala Locations"}
                     </option>
-                  ))}
-                </select>
+                    {citiesTaxonomy.map((c) => (
+                      <option key={c.id || c.nameEn} value={c.nameEn} className="bg-[#141414] text-foreground">
+                        {isMalayalam && c.nameMl ? c.nameMl : c.nameEn}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown className="w-4 h-4 text-muted-foreground absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                </div>
               </div>
 
               {/* 4. Available Now Toggle */}
@@ -336,7 +364,7 @@ function SearchContent() {
                     type="checkbox"
                     checked={availableNow}
                     onChange={(e) => setAvailableNow(e.target.checked)}
-                    className="w-4 h-4 rounded text-primary border-border focus:ring-primary"
+                    className="w-4 h-4 rounded text-primary border-border focus:ring-primary accent-primary cursor-pointer"
                   />
                 </label>
               </div>
@@ -346,14 +374,14 @@ function SearchContent() {
                 <button
                   type="button"
                   onClick={() => setShowAdvanced(!showAdvanced)}
-                  className="w-full flex items-center justify-between text-xs font-bold text-muted-foreground hover:text-foreground py-1"
+                  className="w-full flex items-center justify-between text-xs font-bold text-muted-foreground hover:text-foreground py-1 cursor-pointer"
                 >
                   <span className="flex items-center gap-1.5">
                     <SlidersHorizontal className="w-3.5 h-3.5 text-primary" />
                     {isMalayalam ? "കൂടുതൽ ഫിൽട്ടറുകൾ (P1)" : "Advanced Filters (P1)"}
                   </span>
                   <ChevronDown
-                    className={`w-4 h-4 transition-transform ${showAdvanced ? "rotate-180" : ""}`}
+                    className={`w-4 h-4 transition-transform duration-200 ${showAdvanced ? "rotate-180" : ""}`}
                   />
                 </button>
 
@@ -364,17 +392,20 @@ function SearchContent() {
                       <label className="block text-[11px] font-semibold text-muted-foreground mb-1.5">
                         {isMalayalam ? "പരിചയം" : "Experience Level"}
                       </label>
-                      <select
-                        value={experience}
-                        onChange={(e) => setExperience(e.target.value)}
-                        className="w-full bg-muted border border-border rounded-xl px-2.5 py-2 text-xs outline-none"
-                      >
-                        <option value="">{isMalayalam ? "എല്ലാം" : "Any Experience"}</option>
-                        <option value="0-2">0–2 years / വർഷം</option>
-                        <option value="3-5">3–5 years / വർഷം</option>
-                        <option value="5-10">5–10 years / വർഷം</option>
-                        <option value="10+">10+ years / വർഷം</option>
-                      </select>
+                      <div className="relative">
+                        <select
+                          value={experience}
+                          onChange={(e) => setExperience(e.target.value)}
+                          className="w-full appearance-none bg-[#1A1A1A] border border-[#2A2A2A] text-foreground rounded-xl pl-3 pr-8 py-2 text-xs outline-none focus:border-primary cursor-pointer transition-colors"
+                        >
+                          <option value="" className="bg-[#141414] text-foreground">{isMalayalam ? "എല്ലാം" : "Any Experience"}</option>
+                          <option value="0-2" className="bg-[#141414] text-foreground">{isMalayalam ? "0–2 വർഷം" : "0–2 years"}</option>
+                          <option value="3-5" className="bg-[#141414] text-foreground">{isMalayalam ? "3–5 വർഷം" : "3–5 years"}</option>
+                          <option value="5-10" className="bg-[#141414] text-foreground">{isMalayalam ? "5–10 വർഷം" : "5–10 years"}</option>
+                          <option value="10+" className="bg-[#141414] text-foreground">{isMalayalam ? "10+ വർഷം" : "10+ years"}</option>
+                        </select>
+                        <ChevronDown className="w-3.5 h-3.5 text-muted-foreground absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                      </div>
                     </div>
 
                     {/* Language Filter */}
@@ -382,17 +413,20 @@ function SearchContent() {
                       <label className="block text-[11px] font-semibold text-muted-foreground mb-1.5">
                         {isMalayalam ? "ഭാഷ" : "Language"}
                       </label>
-                      <select
-                        value={language}
-                        onChange={(e) => setLanguage(e.target.value)}
-                        className="w-full bg-muted border border-border rounded-xl px-2.5 py-2 text-xs outline-none"
-                      >
-                        <option value="">{isMalayalam ? "എല്ലാം" : "Any Language"}</option>
-                        <option value="ml">Malayalam / മലയാളം</option>
-                        <option value="en">English / ഇംഗ്ലീഷ്</option>
-                        <option value="ta">Tamil / തമിഴ്</option>
-                        <option value="hi">Hindi / ഹിന്ദി</option>
-                      </select>
+                      <div className="relative">
+                        <select
+                          value={language}
+                          onChange={(e) => setLanguage(e.target.value)}
+                          className="w-full appearance-none bg-[#1A1A1A] border border-[#2A2A2A] text-foreground rounded-xl pl-3 pr-8 py-2 text-xs outline-none focus:border-primary cursor-pointer transition-colors"
+                        >
+                          <option value="" className="bg-[#141414] text-foreground">{isMalayalam ? "എല്ലാം" : "Any Language"}</option>
+                          <option value="ml" className="bg-[#141414] text-foreground">{isMalayalam ? "മലയാളം" : "Malayalam"}</option>
+                          <option value="en" className="bg-[#141414] text-foreground">{isMalayalam ? "ഇംഗ്ലീഷ്" : "English"}</option>
+                          <option value="ta" className="bg-[#141414] text-foreground">{isMalayalam ? "തമിഴ്" : "Tamil"}</option>
+                          <option value="hi" className="bg-[#141414] text-foreground">{isMalayalam ? "ഹിന്ദി" : "Hindi"}</option>
+                        </select>
+                        <ChevronDown className="w-3.5 h-3.5 text-muted-foreground absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                      </div>
                     </div>
 
                     {/* Rate Range Filter */}
@@ -400,20 +434,22 @@ function SearchContent() {
                       <label className="block text-[11px] font-semibold text-muted-foreground mb-1.5">
                         {isMalayalam ? "പ്രതിദിന വേതന പരിധി (₹)" : "Day Rate Range (₹)"}
                       </label>
-                      <div className="flex gap-2">
-                        <Input
+                      <div className="grid grid-cols-2 gap-2">
+                        <input
                           type="number"
+                          min="0"
                           placeholder="Min ₹"
                           value={minRate}
                           onChange={(e) => setMinRate(e.target.value)}
-                          className="text-xs bg-muted"
+                          className="w-full bg-[#1A1A1A] border border-[#2A2A2A] text-foreground rounded-xl px-3 py-2 text-xs outline-none focus:border-primary placeholder:text-muted-foreground/60 transition-colors"
                         />
-                        <Input
+                        <input
                           type="number"
+                          min="0"
                           placeholder="Max ₹"
                           value={maxRate}
                           onChange={(e) => setMaxRate(e.target.value)}
-                          className="text-xs bg-muted"
+                          className="w-full bg-[#1A1A1A] border border-[#2A2A2A] text-foreground rounded-xl px-3 py-2 text-xs outline-none focus:border-primary placeholder:text-muted-foreground/60 transition-colors"
                         />
                       </div>
                     </div>

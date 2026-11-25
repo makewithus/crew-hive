@@ -10,6 +10,7 @@
 
 'use client';
 
+import { apiFetch } from "@/lib/api-client";
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
@@ -23,6 +24,7 @@ import LanguageToggle from '@/components/LanguageToggle';
 import { useLanguage } from '@/context/LanguageContext';
 import { USER_ROLES } from '@/utils/constants';
 import { Building2, FileCheck2, AlertTriangle, ArrowRight } from 'lucide-react';
+import { toast } from 'sonner';
 
 export default function OrganizerSetupPage() {
   const { currentUser, userPhone } = useAuth();
@@ -40,7 +42,7 @@ export default function OrganizerSetupPage() {
   useEffect(() => {
     async function loadCities() {
       try {
-        const res = await fetch('/api/taxonomy/cities');
+        const res = await apiFetch('/api/taxonomy/cities');
         const json = await res.json();
         if (json.success && Array.isArray(json.data)) {
           setAvailableCities(json.data);
@@ -55,23 +57,25 @@ export default function OrganizerSetupPage() {
     setError('');
 
     if (!companyOrName.trim()) {
-      setError(
-        isMalayalam
-          ? 'കമ്പനി അല്ലെങ്കിൽ വ്യക്തിഗത പേര് നൽകുക.'
-          : 'Company or individual name is required.'
-      );
+      const msg = isMalayalam
+        ? 'കമ്പനി അല്ലെങ്കിൽ വ്യക്തിഗത പേര് നൽകുക.'
+        : 'Company or individual name is required.';
+      setError(msg);
+      toast.error(msg);
       return;
     }
     if (!city.trim()) {
-      setError(isMalayalam ? 'നഗരം തിരഞ്ഞെടുക്കുക.' : 'City is required.');
+      const msg = isMalayalam ? 'നഗരം തിരഞ്ഞെടുക്കുക.' : 'City is required.';
+      setError(msg);
+      toast.error(msg);
       return;
     }
     if (!agreeTerms || !agreeConduct) {
-      setError(
-        isMalayalam
-          ? 'തുടരാൻ സേവന നിബന്ധനകളും പെരുമാറ്റച്ചട്ടവും അംഗീകരിക്കണം.'
-          : 'You must accept the terms, privacy policy, and acceptable behaviour.'
-      );
+      const msg = isMalayalam
+        ? 'തുടരാൻ സേവന നിബന്ധനകളും പെരുമാറ്റച്ചട്ടവും അംഗീകരിക്കണം.'
+        : 'You must accept the terms, privacy policy, and acceptable behaviour.';
+      setError(msg);
+      toast.error(msg);
       return;
     }
 
@@ -89,12 +93,17 @@ export default function OrganizerSetupPage() {
       });
 
       if (result.success) {
+        toast.success(isMalayalam ? 'പ്രൊഫൈൽ വിജയകരമായി പൂർത്തിയാക്കി!' : 'Profile completed successfully!');
         router.push('/organizer/dashboard');
       } else {
-        setError(result.error || 'Failed to complete profile');
+        const msg = result.error || 'Failed to complete profile';
+        setError(msg);
+        toast.error(msg);
       }
     } catch (err) {
-      setError(err.message || 'An error occurred');
+      const msg = err.message || 'An error occurred';
+      setError(msg);
+      toast.error(msg);
     } finally {
       setLoading(false);
     }
@@ -122,13 +131,6 @@ export default function OrganizerSetupPage() {
               </div>
               <LanguageToggle compact />
             </div>
-
-            {error && (
-              <div className="mb-6 p-3 bg-destructive/10 border border-destructive/30 rounded-xl text-destructive text-sm flex items-start gap-2">
-                <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
-                <span>{error}</span>
-              </div>
-            )}
 
             <form onSubmit={handleSubmit} className="space-y-6">
               <div>

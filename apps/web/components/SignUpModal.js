@@ -1,21 +1,28 @@
 "use client";
 
+import { apiFetch } from "@/lib/api-client";
+import { CURRENT_CONSENT_VERSION } from "@/utils/taxonomy";
+
+const consentPayload = () => ({ version: CURRENT_CONSENT_VERSION, termsAccepted: true, privacyAccepted: true, acceptableBehaviorAccepted: true });
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { sendOtp, verifyOtp, isValidPhone } from "@/lib/auth";
 import { useLanguage } from "@/context/LanguageContext";
 import { toast as sonnerToast } from "sonner";
+import CountryCodeSelect from "@/components/CountryCodeSelect";
+import ThemedSelect from "@/components/ThemedSelect";
+import { COUNTRIES, COUNTRY_CODES } from "@/utils/countries";
 import {
   X,
   Users,
   Film,
   ClipboardList,
   Phone,
-  ShieldCheck,
   CheckCircle2,
   AlertTriangle,
   Info,
   ChevronLeft,
+  ChevronDown,
   Loader2,
 } from "lucide-react";
 
@@ -38,12 +45,6 @@ const EXPERIENCE_OPTIONS = [
   { value: "10+", labelKey: "modal.expSenior", defaultLabel: "10+ years", descKey: "modal.expSeniorDesc", defaultDesc: "Senior / Expert" },
 ];
 
-const COUNTRY_CODES = [
-  { code: "+91", country: "India", flag: "🇮🇳" },
-  { code: "+1", country: "USA / Canada", flag: "🇺🇸" },
-  { code: "+44", country: "UK", flag: "🇬🇧" },
-  { code: "+971", country: "UAE", flag: "🇦🇪" },
-];
 
 // ─── Toast Component ──────────────────────────────────────────────────────────
 function Toast({ toast, onClose }) {
@@ -84,9 +85,9 @@ function Field({ label, required, children }) {
 }
 
 const inputCls =
-  "w-full bg-muted border border-border text-foreground rounded-xl px-4 py-2.5 text-base sm:text-sm min-h-[44px] outline-none focus:border-primary/60 transition-colors placeholder:text-muted-foreground";
+  "w-full bg-[#1A1A1A] border border-[#2A2A2A] text-foreground rounded-xl px-4 py-2.5 text-base sm:text-sm min-h-[44px] outline-none focus:border-primary transition-colors placeholder:text-muted-foreground/60";
 const selectCls =
-  "w-full bg-muted border border-border text-foreground rounded-xl px-4 py-2.5 text-base sm:text-sm min-h-[44px] outline-none focus:border-primary/60 transition-colors appearance-none cursor-pointer";
+  "w-full bg-[#1A1A1A] border border-[#2A2A2A] text-foreground rounded-xl pl-4 pr-10 py-2.5 text-base sm:text-sm min-h-[44px] outline-none focus:border-primary transition-colors appearance-none cursor-pointer";
 
 // ─── Main Modal ───────────────────────────────────────────────────────────────
 export default function SignUpModal({ open, onClose, defaultRole = null }) {
@@ -102,6 +103,7 @@ export default function SignUpModal({ open, onClose, defaultRole = null }) {
   const [otp, setOtp] = useState("");
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState(null);
+  const [consentOk, setConsentOk] = useState(true);
   const [resendTimer, setResendTimer] = useState(0);
 
   // Crew form
@@ -141,10 +143,36 @@ export default function SignUpModal({ open, onClose, defaultRole = null }) {
     }
   }, [open, defaultRole]);
 
+  // Lock viewport & body scroll when modal is open
+  useEffect(() => {
+    if (open) {
+      const origHtmlOverflow = document.documentElement.style.overflow;
+      const origBodyOverflow = document.body.style.overflow;
+      const origHtmlOverscroll = document.documentElement.style.overscrollBehavior;
+      const origBodyOverscroll = document.body.style.overscrollBehavior;
+
+      document.documentElement.classList.add("modal-open");
+      document.body.classList.add("modal-open");
+      document.documentElement.style.overflow = "hidden";
+      document.body.style.overflow = "hidden";
+      document.documentElement.style.overscrollBehavior = "none";
+      document.body.style.overscrollBehavior = "none";
+
+      return () => {
+        document.documentElement.classList.remove("modal-open");
+        document.body.classList.remove("modal-open");
+        document.documentElement.style.overflow = origHtmlOverflow;
+        document.body.style.overflow = origBodyOverflow;
+        document.documentElement.style.overscrollBehavior = origHtmlOverscroll;
+        document.body.style.overscrollBehavior = origBodyOverscroll;
+      };
+    }
+  }, [open]);
+
   // Toast auto-dismiss
   useEffect(() => {
     if (!toast) return;
-    const t = setTimeout(() => setToast(null), 5000);
+    const t = setTimeout(() => setToast(null), 3500);
     return () => clearTimeout(t);
   }, [toast]);
 
@@ -172,7 +200,7 @@ export default function SignUpModal({ open, onClose, defaultRole = null }) {
   const handleSendOtp = async (e) => {
     e.preventDefault();
     const digits = phone.replace(/\D/g, "");
-    if (digits.length < 7) {
+    if (!digits) {
       showToast(
         "error",
         isMalayalam
@@ -181,8 +209,19 @@ export default function SignUpModal({ open, onClose, defaultRole = null }) {
       );
       return;
     }
+
     const fp = `${countryCode}${digits}`;
-    if (!isValidPhone(fp)) {
+    if (countryCode === "+91") {
+      if (digits.length !== 10 || !/^[6-9]\d{9}$/.test(digits)) {
+        showToast(
+          "error",
+          isMalayalam
+            ? "സാധുവായ 10 അക്ക ഇന്ത്യൻ മൊബൈൽ നമ്പർ നൽകുക (6-9 ൽ തുടങ്ങുന്നത്)."
+            : "Please provide a valid 10-digit Indian mobile number"
+        );
+        return;
+      }
+    } else if (digits.length < 7 || !isValidPhone(fp)) {
       showToast(
         "error",
         isMalayalam
@@ -201,15 +240,11 @@ export default function SignUpModal({ open, onClose, defaultRole = null }) {
     }
     setFullPhone(fp);
     setStep("otp");
-    const isLocal =
-      typeof window !== "undefined" &&
-      (window.location.hostname === "localhost" ||
-        window.location.hostname === "127.0.0.1");
     showToast(
       "info",
       isMalayalam
-        ? `${countryCode} ${digits}-ലേക്ക് OTP അയച്ചു${isLocal ? " (123456 ഉപയോഗിക്കുക)" : ""}`
-        : `OTP sent to ${countryCode} ${digits}${isLocal ? " (use 123456)" : ""}`
+        ? `${countryCode} ${digits}-ലേക്ക് OTP അയച്ചു.`
+        : `OTP sent to ${countryCode} ${digits}.`
     );
     setResendTimer(60);
   };
@@ -315,12 +350,13 @@ export default function SignUpModal({ open, onClose, defaultRole = null }) {
       const finalCity = crewForm.city === "Other" ? crewForm.cityOther.trim() : crewForm.city;
       const finalRole = crewForm.crewRole === "Other" ? crewForm.crewRoleOther.trim() : crewForm.crewRole;
 
-      const res = await fetch("/api/auth/signup", {
+      const res = await apiFetch("/api/auth/signup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           phone: fullPhone,
           role: "crew",
+          consent: consentPayload(),
           crewData: {
             name: crewForm.name.trim(),
             city: finalCity,
@@ -331,6 +367,12 @@ export default function SignUpModal({ open, onClose, defaultRole = null }) {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || (isMalayalam ? "പ്രൊഫൈൽ നിർമ്മിക്കാൻ കഴിഞ്ഞില്ല." : "Failed to create profile."));
+      if (typeof window !== "undefined") {
+        try {
+          sessionStorage.setItem("crewhive_user_role", "crew");
+          sessionStorage.setItem("crewhive_user_phone", fullPhone);
+        } catch (_) {}
+      }
       setStep("success");
     } catch (err) {
       showToast(
@@ -374,12 +416,13 @@ export default function SignUpModal({ open, onClose, defaultRole = null }) {
     try {
       const finalCity = orgForm.city === "Other" ? orgForm.cityOther.trim() : orgForm.city;
 
-      const res = await fetch("/api/auth/signup", {
+      const res = await apiFetch("/api/auth/signup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           phone: fullPhone,
           role: "organizer",
+          consent: consentPayload(),
           organizerData: {
             name: orgForm.name.trim(),
             companyName: orgForm.companyName.trim(),
@@ -390,6 +433,12 @@ export default function SignUpModal({ open, onClose, defaultRole = null }) {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || (isMalayalam ? "പ്രൊഫൈൽ നിർമ്മിക്കാൻ കഴിഞ്ഞില്ല." : "Failed to create profile."));
+      if (typeof window !== "undefined") {
+        try {
+          sessionStorage.setItem("crewhive_user_role", "organizer");
+          sessionStorage.setItem("crewhive_user_phone", fullPhone);
+        } catch (_) {}
+      }
       setStep("success");
     } catch (err) {
       showToast(
@@ -408,15 +457,15 @@ export default function SignUpModal({ open, onClose, defaultRole = null }) {
   useEffect(() => {
     if (step !== "success") return;
     const timer = setTimeout(() => {
-      onClose();
+      // Do not call onClose() before navigating, so the landing page doesn't flash
       if (role === "crew") {
-        router.push("/pending-approval");
+        window.location.href = "/pending-approval";
       } else {
-        router.push("/organizer/dashboard");
+        window.location.href = "/organizer/search";
       }
-    }, 2500);
+    }, 1500);
     return () => clearTimeout(timer);
-  }, [step, role, router, onClose]);
+  }, [step, role]);
 
   if (!open) return null;
 
@@ -438,15 +487,25 @@ export default function SignUpModal({ open, onClose, defaultRole = null }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-2.5 sm:p-4">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-2.5 sm:p-4 overflow-hidden overscroll-none"
+      onWheel={(e) => {
+        if (e.target === e.currentTarget) e.preventDefault();
+      }}
+      onTouchMove={(e) => {
+        if (e.target === e.currentTarget) e.preventDefault();
+      }}
+    >
       {/* Backdrop */}
       <div
         className="absolute inset-0 bg-black/70 backdrop-blur-sm"
         onClick={step !== "success" ? onClose : undefined}
+        onWheel={(e) => e.preventDefault()}
+        onTouchMove={(e) => e.preventDefault()}
       />
 
       {/* Modal */}
-      <div className="relative w-full max-w-lg bg-background border border-border rounded-2xl shadow-2xl overflow-hidden max-h-[94dvh] sm:max-h-[90vh] overflow-y-auto overscroll-contain">
+      <div className="relative w-full max-w-lg bg-card border border-border rounded-2xl shadow-2xl flex flex-col max-h-[94dvh] sm:max-h-[88vh] overflow-hidden overscroll-contain">
         {/* Hidden reCAPTCHA */}
         <div
           id="recaptcha-container"
@@ -454,7 +513,7 @@ export default function SignUpModal({ open, onClose, defaultRole = null }) {
         />
 
         {/* Header */}
-        <div className="flex items-center justify-between px-4 sm:px-6 py-3.5 sm:py-4 border-b border-border">
+        <div className="flex items-center justify-between px-5 sm:px-6 py-3 sm:py-3.5 border-b border-border shrink-0 bg-card">
           <div className="flex items-center gap-2.5 sm:gap-3">
             {canGoBack && (
               <button
@@ -474,7 +533,7 @@ export default function SignUpModal({ open, onClose, defaultRole = null }) {
           </div>
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-muted transition-colors min-h-[44px] min-w-[44px]"
+            className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-muted transition-colors min-h-[44px] min-w-[44px] cursor-pointer"
             aria-label={t("common.actions.close", "Close dialog")}
           >
             <X className="w-4 h-4 text-muted-foreground" />
@@ -483,7 +542,7 @@ export default function SignUpModal({ open, onClose, defaultRole = null }) {
 
         {/* Progress bar */}
         {step !== "success" && (
-          <div className="h-1 bg-muted">
+          <div className="h-1 bg-muted shrink-0">
             <div
               className="h-full bg-primary transition-all duration-500"
               style={{ width: `${((stepIndex + 1) / steps.length) * 100}%` }}
@@ -491,7 +550,7 @@ export default function SignUpModal({ open, onClose, defaultRole = null }) {
           </div>
         )}
 
-        <div className="px-4 sm:px-6 py-4 sm:py-6">
+        <div className="flex-1 overflow-y-auto custom-scrollbar px-5 sm:px-6 py-3.5 sm:py-4 overscroll-contain">
           <Toast toast={toast} onClose={() => setToast(null)} />
 
           {/* ── STEP: Role Selection ── */}
@@ -556,29 +615,23 @@ export default function SignUpModal({ open, onClose, defaultRole = null }) {
                 {t("modal.phoneSubtitle", "We'll send an OTP to verify your number.")}
               </p>
               <form onSubmit={handleSendOtp} className="space-y-4">
+                <Field label={isMalayalam ? "രാജ്യ കോഡ്" : "Country Code"}>
+                  <CountryCodeSelect
+                    value={countryCode}
+                    onChange={(code) => setCountryCode(code)}
+                  />
+                </Field>
+
                 <Field label={t("modal.phoneLabel", "Phone Number")} required>
-                  <div className="flex gap-2">
-                    <select
-                      value={countryCode}
-                      onChange={(e) => setCountryCode(e.target.value)}
-                      className="bg-muted border border-border text-foreground rounded-xl px-3 py-2.5 text-sm outline-none focus:border-primary/60 transition-colors"
-                    >
-                      {COUNTRY_CODES.map((c) => (
-                        <option key={c.code} value={c.code}>
-                          {c.flag} {c.code}
-                        </option>
-                      ))}
-                    </select>
-                    <input
-                      type="tel"
-                      value={phone}
-                      onChange={(e) => setPhone(e.target.value.replace(/\D/g, ""))}
-                      placeholder="9876543210"
-                      maxLength={12}
-                      className={`flex-1 ${inputCls}`}
-                      autoFocus
-                    />
-                  </div>
+                  <input
+                    type="tel"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, 10))}
+                    placeholder="9876543210"
+                    maxLength={10}
+                    className={`w-full ${inputCls}`}
+                    autoFocus
+                  />
                 </Field>
                 <button
                   type="submit"
@@ -619,7 +672,7 @@ export default function SignUpModal({ open, onClose, defaultRole = null }) {
                   disabled={loading || otp.length < 6}
                   className="w-full flex items-center justify-center gap-2 bg-primary text-primary-foreground font-semibold py-3 min-h-[46px] rounded-xl hover:bg-primary/90 transition-all disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
                 >
-                  {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ShieldCheck className="w-4 h-4" />}
+                  {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
                   {loading ? t("modal.verifying", "Verifying…") : t("modal.verifyOtp", "Verify OTP")}
                 </button>
                 <button
@@ -641,15 +694,24 @@ export default function SignUpModal({ open, onClose, defaultRole = null }) {
           {/* ── STEP: Crew Profile Form ── */}
           {step === "profile" && role === "crew" && (
             <div>
-              <h2 className="text-xl font-bold text-foreground mb-1">
+              <div className="flex items-center justify-between gap-2 mb-1">
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-primary/10 text-primary border border-primary/20">
+                  <Film className="w-3.5 h-3.5" />
+                  {isMalayalam ? "ക്രൂ" : "Crew"}
+                </span>
+                <span className="text-xs font-mono font-medium text-muted-foreground bg-muted/60 px-2 py-0.5 rounded-md border border-border/50">
+                  {fullPhone}
+                </span>
+              </div>
+              <h2 className="text-lg sm:text-xl font-bold text-foreground mb-0.5">
                 {t("modal.completeCrewProfile", "Complete your profile")}
               </h2>
-              <p className="text-muted-foreground text-sm mb-6">
+              <p className="text-xs text-muted-foreground mb-3">
                 {isMalayalam
-                  ? `വിവരങ്ങൾ നൽകുക — നിങ്ങളുടെ നമ്പർ ${fullPhone} സ്ഥിരീകരിച്ചു.`
-                  : `Fill in your details — your phone ${fullPhone} is verified.`}
+                  ? `വിവരങ്ങൾ നൽകുക — നിങ്ങളുടെ നമ്പർ സ്ഥിരീകരിച്ചു.`
+                  : `Fill in your details to create your profile.`}
               </p>
-              <form onSubmit={handleCrewSubmit} className="space-y-4">
+              <form onSubmit={handleCrewSubmit} className="space-y-3">
                 <Field label={t("modal.fullName", "Full Name")} required>
                   <input
                     type="text"
@@ -662,25 +724,21 @@ export default function SignUpModal({ open, onClose, defaultRole = null }) {
                 </Field>
 
                 <Field label={t("modal.city", "City")} required>
-                  <select
+                  <ThemedSelect
                     value={crewForm.city}
-                    onChange={(e) => setCrewForm((p) => ({ ...p, city: e.target.value, cityOther: "" }))}
-                    className={selectCls}
-                  >
-                    <option value="">{t("modal.selectCity", "Select your city")}</option>
-                    {CITIES.map((c) => {
+                    onChange={(val) => setCrewForm((p) => ({ ...p, city: val, cityOther: "" }))}
+                    options={CITIES.map((c) => {
                       let label = c;
                       if (isMalayalam) {
-                        if (c === "Kochi") label = "കൊച്ചി (Kochi)";
-                        else if (c === "Trivandrum") label = "തിരുവനന്തപുരം (Trivandrum)";
-                        else if (c === "Kozhikode") label = "കോഴിക്കോട് (Kozhikode)";
-                        else if (c === "Other") label = "മറ്റുള്ളവ (Other)";
+                        if (c === "Kochi") label = "കൊച്ചി";
+                        else if (c === "Trivandrum") label = "തിരുവനന്തപുരം";
+                        else if (c === "Kozhikode") label = "കോഴിക്കോട്";
+                        else if (c === "Other") label = "മറ്റുള്ളവ";
                       }
-                      return (
-                        <option key={c} value={c}>{label}</option>
-                      );
+                      return { value: c, label };
                     })}
-                  </select>
+                    placeholder={t("modal.selectCity", "Select your city")}
+                  />
                 </Field>
                 {crewForm.city === "Other" && (
                   <Field label={t("modal.yourCity", "Your City")} required>
@@ -695,27 +753,23 @@ export default function SignUpModal({ open, onClose, defaultRole = null }) {
                 )}
 
                 <Field label={t("modal.primaryRole", "Your Role")} required>
-                  <select
+                  <ThemedSelect
                     value={crewForm.crewRole}
-                    onChange={(e) => setCrewForm((p) => ({ ...p, crewRole: e.target.value, crewRoleOther: "" }))}
-                    className={selectCls}
-                  >
-                    <option value="">{t("modal.selectRole", "Select your primary role")}</option>
-                    {CREW_ROLES.map((r) => {
+                    onChange={(val) => setCrewForm((p) => ({ ...p, crewRole: val, crewRoleOther: "" }))}
+                    options={CREW_ROLES.map((r) => {
                       let rLabel = r;
                       if (isMalayalam) {
-                        if (r === "Sound Engineer") rLabel = "സൗണ്ട് എൻജിനീയർ (Sound Engineer)";
-                        else if (r === "Lighting Operator") rLabel = "ലൈറ്റിംഗ് ഓപ്പറേറ്റർ (Lighting Operator)";
-                        else if (r === "LED Wall Tech") rLabel = "LED വാൾ ടെക്നീഷ്യൻ (LED Wall Tech)";
-                        else if (r === "Stage Manager") rLabel = "സ്റ്റേജ് മാനേജർ (Stage Manager)";
-                        else if (r === "Rigger") rLabel = "റിഗ്ഗർ (Rigger)";
-                        else if (r === "Other") rLabel = "മറ്റുള്ളവ (Other)";
+                        if (r === "Sound Engineer") rLabel = "സൗണ്ട് എൻജിനീയർ";
+                        else if (r === "Lighting Operator") rLabel = "ലൈറ്റിംഗ് ഓപ്പറേറ്റർ";
+                        else if (r === "LED Wall Tech") rLabel = "LED വാൾ ടെക്നീഷ്യൻ";
+                        else if (r === "Stage Manager") rLabel = "സ്റ്റേജ് മാനേജർ";
+                        else if (r === "Rigger") rLabel = "റിഗ്ഗർ";
+                        else if (r === "Other") rLabel = "മറ്റുള്ളവ";
                       }
-                      return (
-                        <option key={r} value={r}>{rLabel}</option>
-                      );
+                      return { value: r, label: rLabel };
                     })}
-                  </select>
+                    placeholder={t("modal.selectRole", "Select your primary role")}
+                  />
                 </Field>
                 {crewForm.crewRole === "Other" && (
                   <Field label={t("modal.specifyRole", "Specify Your Role")} required>
@@ -736,7 +790,7 @@ export default function SignUpModal({ open, onClose, defaultRole = null }) {
                         type="button"
                         key={opt.value}
                         onClick={() => setCrewForm((p) => ({ ...p, experience: opt.value }))}
-                        className={`flex flex-col items-start p-3 rounded-xl border text-left transition-all cursor-pointer ${
+                        className={`flex flex-col items-start p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
                           crewForm.experience === opt.value
                             ? "border-primary bg-primary/10 text-primary"
                             : "border-border bg-muted text-muted-foreground hover:border-primary/40 hover:bg-primary/5"
@@ -745,7 +799,7 @@ export default function SignUpModal({ open, onClose, defaultRole = null }) {
                         <span className="text-sm font-semibold">
                           {opt.labelKey ? t(opt.labelKey, opt.defaultLabel) : opt.label}
                         </span>
-                        <span className="text-xs opacity-70 mt-0.5">
+                        <span className="text-[11px] opacity-70 mt-0.5">
                           {opt.descKey ? t(opt.descKey, opt.defaultDesc) : opt.desc}
                         </span>
                       </button>
@@ -753,25 +807,10 @@ export default function SignUpModal({ open, onClose, defaultRole = null }) {
                   </div>
                 </Field>
 
-                {/* Phone display (read-only) */}
-                <Field label={t("modal.phoneLabel", "Phone Number")}>
-                  <input
-                    type="text"
-                    value={fullPhone}
-                    readOnly
-                    className={`${inputCls} opacity-60 cursor-not-allowed`}
-                  />
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {isMalayalam
-                      ? "ഇത് നിങ്ങളുടെ സ്ഥിരീകരിച്ച ഫോൺ നമ്പറാണ്."
-                      : "This is your verified phone number."}
-                  </p>
-                </Field>
-
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full flex items-center justify-center gap-2 bg-primary text-primary-foreground font-semibold py-3 min-h-[46px] rounded-xl hover:bg-primary/90 transition-all disabled:opacity-60 disabled:cursor-not-allowed mt-2 cursor-pointer"
+                  className="w-full flex items-center justify-center gap-2 bg-primary text-primary-foreground font-semibold py-2.5 min-h-[44px] rounded-xl hover:bg-primary/90 transition-all disabled:opacity-60 disabled:cursor-not-allowed mt-1 cursor-pointer"
                 >
                   {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
                   {loading ? t("modal.creating", "Creating profile…") : t("modal.submitCrew", "Submit for Approval")}
@@ -789,15 +828,24 @@ export default function SignUpModal({ open, onClose, defaultRole = null }) {
           {/* ── STEP: Organizer Profile Form ── */}
           {step === "profile" && role === "organizer" && (
             <div>
-              <h2 className="text-xl font-bold text-foreground mb-1">
-                {t("modal.completeOrgProfile", "Complete your profile")}
+              <div className="flex items-center justify-between gap-2 mb-1">
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-500 border border-amber-500/20">
+                  <ClipboardList className="w-3.5 h-3.5 text-amber-500" />
+                  {t("modal.roleOrganizer", "Organizer")}
+                </span>
+                <span className="text-xs font-mono font-medium text-muted-foreground bg-muted/60 px-2 py-0.5 rounded-md border border-border/50">
+                  {fullPhone}
+                </span>
+              </div>
+              <h2 className="text-lg sm:text-xl font-bold text-foreground mb-0.5">
+                {t("modal.completeOrgProfile", "Complete organizer profile")}
               </h2>
-              <p className="text-muted-foreground text-sm mb-6">
+              <p className="text-xs text-muted-foreground mb-3">
                 {isMalayalam
-                  ? `വിവരങ്ങൾ നൽകുക — നിങ്ങളുടെ നമ്പർ ${fullPhone} സ്ഥിരീകരിച്ചു.`
-                  : `Fill in your details — your phone ${fullPhone} is verified.`}
+                  ? `വിവരങ്ങൾ നൽകുക — നിങ്ങളുടെ നമ്പർ സ്ഥിരീകരിച്ചു.`
+                  : `Fill in your details — your phone is verified.`}
               </p>
-              <form onSubmit={handleOrganizerSubmit} className="space-y-4">
+              <form onSubmit={handleOrganizerSubmit} className="space-y-3">
                 <Field label={t("modal.fullName", "Your Full Name")} required>
                   <input
                     type="text"
@@ -820,25 +868,21 @@ export default function SignUpModal({ open, onClose, defaultRole = null }) {
                 </Field>
 
                 <Field label={t("modal.city", "City")} required>
-                  <select
+                  <ThemedSelect
                     value={orgForm.city}
-                    onChange={(e) => setOrgForm((p) => ({ ...p, city: e.target.value, cityOther: "" }))}
-                    className={selectCls}
-                  >
-                    <option value="">{t("modal.selectCity", "Select your city")}</option>
-                    {CITIES.map((c) => {
+                    onChange={(val) => setOrgForm((p) => ({ ...p, city: val, cityOther: "" }))}
+                    options={CITIES.map((c) => {
                       let label = c;
                       if (isMalayalam) {
-                        if (c === "Kochi") label = "കൊച്ചി (Kochi)";
-                        else if (c === "Trivandrum") label = "തിരുവനന്തപുരം (Trivandrum)";
-                        else if (c === "Kozhikode") label = "കോഴിക്കോട് (Kozhikode)";
-                        else if (c === "Other") label = "മറ്റുള്ളവ (Other)";
+                        if (c === "Kochi") label = "കൊച്ചി";
+                        else if (c === "Trivandrum") label = "തിരുവനന്തപുരം";
+                        else if (c === "Kozhikode") label = "കോഴിക്കോട്";
+                        else if (c === "Other") label = "മറ്റുള്ളവ";
                       }
-                      return (
-                        <option key={c} value={c}>{label}</option>
-                      );
+                      return { value: c, label };
                     })}
-                  </select>
+                    placeholder={t("modal.selectCity", "Select your city")}
+                  />
                 </Field>
                 {orgForm.city === "Other" && (
                   <Field label={t("modal.yourCity", "Your City")} required>
@@ -860,36 +904,15 @@ export default function SignUpModal({ open, onClose, defaultRole = null }) {
                       "modal.requirementsPlaceholder",
                       "e.g. We regularly need sound engineers and lighting operators for corporate events…"
                     )}
-                    rows={3}
-                    className={`${inputCls} resize-none`}
+                    rows={2}
+                    className={`${inputCls} resize-none min-h-[56px]`}
                   />
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {t(
-                      "modal.requirementsDesc",
-                      "Describe the kind of crew you typically need."
-                    )}
-                  </p>
-                </Field>
-
-                {/* Phone display (read-only) */}
-                <Field label={t("modal.phoneLabel", "Phone Number")}>
-                  <input
-                    type="text"
-                    value={fullPhone}
-                    readOnly
-                    className={`${inputCls} opacity-60 cursor-not-allowed`}
-                  />
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {isMalayalam
-                      ? "ഇത് നിങ്ങളുടെ സ്ഥിരീകരിച്ച ഫോൺ നമ്പറാണ്."
-                      : "This is your verified phone number."}
-                  </p>
                 </Field>
 
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full flex items-center justify-center gap-2 bg-primary text-primary-foreground font-semibold py-3 min-h-[46px] rounded-xl hover:bg-primary/90 transition-all disabled:opacity-60 disabled:cursor-not-allowed mt-2 cursor-pointer"
+                  className="w-full flex items-center justify-center gap-2 bg-primary text-primary-foreground font-semibold py-2.5 min-h-[44px] rounded-xl hover:bg-primary/90 transition-all disabled:opacity-60 disabled:cursor-not-allowed mt-1 cursor-pointer"
                 >
                   {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
                   {loading ? t("modal.creating", "Creating profile…") : t("modal.submitOrg", "Create Account & Continue")}

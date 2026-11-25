@@ -16,6 +16,7 @@
 
 "use client";
 
+import { apiFetch } from "@/lib/api-client";
 import { useState, useEffect, use } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -24,12 +25,12 @@ import { getCrewProfile } from "@/lib/firestore";
 import Header from "@/components/Header";
 import AuthGuard from "@/components/AuthGuard";
 import StatusBadge from "@/components/StatusBadge";
-import LanguageToggle from "@/components/LanguageToggle";
 import { useLanguage } from "@/context/LanguageContext";
 import { formatDate } from "@/utils/formatting";
 import { USER_ROLES } from "@/utils/constants";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import DatePicker from "@/components/DatePicker";
 import {
   MapPin,
   Clock,
@@ -39,7 +40,8 @@ import {
   MessageSquare,
   Send,
   Bookmark,
-  ShieldCheck,
+  Award,
+  Ban,
   Video,
   Instagram,
   Youtube,
@@ -50,6 +52,7 @@ import {
   AlertTriangle,
   ArrowLeft,
   CheckCircle2,
+  CalendarCheck,
   Flag,
   X,
 } from "lucide-react";
@@ -82,6 +85,39 @@ export default function CrewProfilePage({ params }) {
   const [reportDetails, setReportDetails] = useState("");
   const [submittingReport, setSubmittingReport] = useState(false);
 
+  // Block Profile Modal
+  const [isBlocked, setIsBlocked] = useState(false);
+  const [showBlockModal, setShowBlockModal] = useState(false);
+  const [submittingBlock, setSubmittingBlock] = useState(false);
+
+  // Pre-booking Date Hold Modal (I7 [P2])
+  const [showHoldModal, setShowHoldModal] = useState(false);
+  const [holdDate, setHoldDate] = useState("");
+  const [holdEndDate, setHoldEndDate] = useState("");
+  const [holdEventName, setHoldEventName] = useState("");
+  const [holdLocation, setHoldLocation] = useState("");
+  const [holdOfferedRate, setHoldOfferedRate] = useState("");
+  const [holdNotes, setHoldNotes] = useState("");
+  const [submittingHold, setSubmittingHold] = useState(false);
+
+  // Lock body scroll when any modal is open
+  useEffect(() => {
+    if (showRequestForm || showReportModal || showBlockModal || showHoldModal) {
+      const origHtmlOverflow = document.documentElement.style.overflow;
+      const origBodyOverflow = document.body.style.overflow;
+      document.documentElement.classList.add("modal-open");
+      document.body.classList.add("modal-open");
+      document.documentElement.style.overflow = "hidden";
+      document.body.style.overflow = "hidden";
+      return () => {
+        document.documentElement.classList.remove("modal-open");
+        document.body.classList.remove("modal-open");
+        document.documentElement.style.overflow = origHtmlOverflow;
+        document.body.style.overflow = origBodyOverflow;
+      };
+    }
+  }, [showRequestForm, showReportModal, showBlockModal, showHoldModal]);
+
   useEffect(() => {
     loadCrewData();
   }, [crewId]);
@@ -101,10 +137,19 @@ export default function CrewProfilePage({ params }) {
 
       // Check if already shortlisted
       try {
-        const slRes = await fetch(`/api/recruiter/shortlist?phone=${userPhone}`);
+        const slRes = await apiFetch(`/api/recruiter/shortlist?phone=${userPhone}`);
         const slJson = await slRes.json();
         if (slJson.success && Array.isArray(slJson.data)) {
           setIsShortlisted(slJson.data.some((item) => item.id === crewId));
+        }
+      } catch (_) {}
+
+      // Check if blocked
+      try {
+        const blRes = await apiFetch("/api/blocks");
+        const blJson = await blRes.json();
+        if (blJson.success && Array.isArray(blJson.items)) {
+          setIsBlocked(blJson.items.includes(crewId));
         }
       } catch (_) {}
     } catch (err) {
@@ -117,7 +162,7 @@ export default function CrewProfilePage({ params }) {
   const handleToggleShortlist = async () => {
     try {
       if (isShortlisted) {
-        const res = await fetch(`/api/recruiter/shortlist?crewId=${crewId}&phone=${userPhone}`, {
+        const res = await apiFetch(`/api/recruiter/shortlist?crewId=${crewId}&phone=${userPhone}`, {
           method: "DELETE",
         });
         if (res.ok) {
@@ -125,7 +170,7 @@ export default function CrewProfilePage({ params }) {
           toast.success("Removed from shortlist");
         }
       } else {
-        const res = await fetch("/api/recruiter/shortlist", {
+        const res = await apiFetch("/api/recruiter/shortlist", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -155,7 +200,7 @@ export default function CrewProfilePage({ params }) {
 
     setSubmittingRequest(true);
     try {
-      const res = await fetch("/api/requests/create", {
+      const res = await apiFetch("/api/requests/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -185,11 +230,59 @@ export default function CrewProfilePage({ params }) {
     }
   };
 
+  const handleRequestDateHold = async (e) => {
+    e.preventDefault();
+    if (!holdDate || !holdEventName) {
+      toast.error(
+        isMalayalam
+          ? "ദയവായി ആരംഭ തീയതിയും ഇവന്റിന്റെ പേരും നൽകുക."
+          : "Please provide start date and event name."
+      );
+      return;
+    }
+
+    setSubmittingHold(true);
+    try {
+      const res = await apiFetch("/api/prebookings", {
+        method: "POST",
+        body: JSON.stringify({
+          crewId,
+          date: holdDate,
+          endDate: holdEndDate || holdDate,
+          eventName: holdEventName,
+          location: holdLocation || crew?.city || "",
+          notes: holdNotes,
+          offeredRate: holdOfferedRate ? Number(holdOfferedRate) : null,
+        }),
+      });
+      const json = await res.json();
+      if (res.ok && json.success) {
+        toast.success(
+          isMalayalam
+            ? "48 മണിക്കൂർ തീയതി ഹോൾഡ് വിജയകരമായി അഭ്യർത്ഥിച്ചു."
+            : "48-hour date hold requested successfully."
+        );
+        setShowHoldModal(false);
+        setHoldDate("");
+        setHoldEndDate("");
+        setHoldEventName("");
+        setHoldNotes("");
+        setHoldOfferedRate("");
+      } else {
+        toast.error(json.error || "Failed to request date hold.");
+      }
+    } catch (err) {
+      toast.error(err.message || "Network error requesting date hold");
+    } finally {
+      setSubmittingHold(false);
+    }
+  };
+
   const handleSubmitReport = async (e) => {
     e.preventDefault();
     setSubmittingReport(true);
     try {
-      const res = await fetch("/api/admin/reports", {
+      const res = await apiFetch("/api/admin/reports", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -211,6 +304,40 @@ export default function CrewProfilePage({ params }) {
       toast.error("Network error submitting report.");
     } finally {
       setSubmittingReport(false);
+    }
+  };
+
+  const handleToggleBlock = async () => {
+    if (submittingBlock) return;
+    setSubmittingBlock(true);
+    try {
+      if (isBlocked) {
+        const res = await apiFetch(`/api/blocks/${crewId}`, { method: "DELETE" });
+        if (res.ok) {
+          setIsBlocked(false);
+          toast.success(isMalayalam ? "അൺബ്ലോക്ക് ചെയ്തു." : "Technician unblocked.");
+          setShowBlockModal(false);
+        } else {
+          toast.error(isMalayalam ? "അൺബ്ലോക്ക് ചെയ്യാൻ കഴിഞ്ഞില്ല." : "Failed to unblock.");
+        }
+      } else {
+        const res = await apiFetch(`/api/blocks/${crewId}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({}),
+        });
+        if (res.ok) {
+          setIsBlocked(true);
+          toast.success(isMalayalam ? "ടെക്നീഷ്യനെ ബ്ലോക്ക് ചെയ്തു." : "Technician blocked.");
+          setShowBlockModal(false);
+        } else {
+          toast.error(isMalayalam ? "ബ്ലോക്ക് ചെയ്യാൻ കഴിഞ്ഞില്ല." : "Failed to block.");
+        }
+      }
+    } catch (err) {
+      toast.error(err.message || "Action failed.");
+    } finally {
+      setSubmittingBlock(false);
     }
   };
 
@@ -285,13 +412,30 @@ export default function CrewProfilePage({ params }) {
             <div className="flex items-center gap-3">
               <button
                 type="button"
+                onClick={() => setShowBlockModal(true)}
+                className={`text-xs flex items-center gap-1 transition-colors ${
+                  isBlocked
+                    ? "text-amber-400 hover:text-amber-300 font-semibold"
+                    : "text-muted-foreground hover:text-destructive"
+                }`}
+              >
+                <Ban className="w-3.5 h-3.5" />
+                {isBlocked
+                  ? isMalayalam
+                    ? "അൺബ്ലോക്ക് ചെയ്യുക"
+                    : "Unblock"
+                  : isMalayalam
+                  ? "ബ്ലോക്ക് ചെയ്യുക"
+                  : "Block"}
+              </button>
+              <button
+                type="button"
                 onClick={() => setShowReportModal(true)}
                 className="text-xs text-muted-foreground hover:text-destructive flex items-center gap-1 transition-colors"
               >
                 <Flag className="w-3.5 h-3.5" />
                 {isMalayalam ? "പ്രൊഫൈൽ റിപ്പോർട്ട് ചെയ്യുക" : "Report"}
               </button>
-              <LanguageToggle compact />
             </div>
           </div>
 
@@ -321,8 +465,8 @@ export default function CrewProfilePage({ params }) {
                       </h1>
                       {crew.associationMember && (
                         <span className="inline-flex items-center gap-1 text-xs font-semibold text-amber-400 bg-amber-400/10 border border-amber-400/25 px-2 py-0.5 rounded-full">
-                          <ShieldCheck className="w-3.5 h-3.5" />
-                          {crew.associationName || "Verified Member"}
+                          <Award className="w-3.5 h-3.5" />
+                          {crew.associationName || (isMalayalam ? "അസോസിയേഷൻ അംഗം" : "Association Member")}
                         </span>
                       )}
                     </div>
@@ -399,36 +543,60 @@ export default function CrewProfilePage({ params }) {
                 </div>
 
                 {/* Primary CTA Buttons */}
-                <div className="flex flex-wrap items-center gap-3">
-                  {/* WhatsApp Deep Link */}
-                  <a
-                    href={whatsappUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs transition-colors shadow-sm"
-                  >
-                    <MessageSquare className="w-4 h-4" />
-                    WhatsApp
-                  </a>
+                {isBlocked ? (
+                  <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-destructive/10 border border-destructive/20 text-destructive text-xs font-semibold">
+                    <Ban className="w-4 h-4 shrink-0" />
+                    <span>
+                      {isMalayalam
+                        ? "ഈ ടെക്നീഷ്യനെ നിങ്ങൾ ബ്ലോക്ക് ചെയ്തിരിക്കുന്നു. അഭ്യർത്ഥനകൾ അയക്കാൻ അൺബ്ലോക്ക് ചെയ്യുക."
+                        : "Technician is blocked. Unblock profile to send availability requests."}
+                    </span>
+                  </div>
+                ) : (
+                  <div className="flex flex-wrap items-center gap-3">
+                    {/* WhatsApp Deep Link */}
+                    <a
+                      href={whatsappUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs transition-colors shadow-sm"
+                    >
+                      <MessageSquare className="w-4 h-4" />
+                      WhatsApp
+                    </a>
 
-                  {/* Phone Call Action */}
-                  <a
-                    href={telUrl}
-                    className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-border hover:bg-muted text-foreground font-semibold text-xs transition-colors"
-                  >
-                    <Phone className="w-4 h-4 text-primary" />
-                    Call
-                  </a>
+                    {/* Phone Call Action */}
+                    <a
+                      href={telUrl}
+                      className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-border hover:bg-muted text-foreground font-semibold text-xs transition-colors"
+                    >
+                      <Phone className="w-4 h-4 text-primary" />
+                      Call
+                    </a>
 
-                  {/* Send Availability Request */}
-                  <Button
-                    onClick={() => setShowRequestForm(true)}
-                    className="bg-primary text-primary-foreground hover:bg-primary/90 font-semibold text-xs gap-2 px-5 py-2.5"
-                  >
-                    <Send className="w-4 h-4" />
-                    {isMalayalam ? "ലഭ്യത റിക്വസ്റ്റ് അയയ്ക്കുക" : "Send Availability Request"}
-                  </Button>
-                </div>
+                    {/* Send Availability Request */}
+                    <Button
+                      onClick={() => setShowRequestForm(true)}
+                      className="bg-primary text-primary-foreground hover:bg-primary/90 font-semibold text-xs gap-2 px-5 py-2.5"
+                    >
+                      <Send className="w-4 h-4" />
+                      {isMalayalam ? "ലഭ്യത റിക്വസ്റ്റ് അയയ്ക്കുക" : "Send Availability Request"}
+                    </Button>
+
+                    {/* Pre-booking Date Hold (I7 [P2]) */}
+                    <Button
+                      onClick={() => {
+                        setHoldLocation(crew?.city || "");
+                        setShowHoldModal(true);
+                      }}
+                      variant="outline"
+                      className="border-primary/40 hover:bg-primary/10 text-foreground font-semibold text-xs gap-2 px-4 py-2.5"
+                    >
+                      <CalendarCheck className="w-4 h-4 text-primary" />
+                      {isMalayalam ? "തീയതി ഹോൾഡ്" : "Hold Date"}
+                    </Button>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -730,6 +898,73 @@ export default function CrewProfilePage({ params }) {
           </div>
         )}
 
+        {/* ── MODAL: BLOCK PROFILE ──────────────────────────────────────────── */}
+        {showBlockModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+            <div className="bg-card border border-border rounded-2xl p-6 max-w-md w-full shadow-2xl relative">
+              <button
+                onClick={() => setShowBlockModal(false)}
+                className="absolute right-4 top-4 text-muted-foreground hover:text-foreground"
+              >
+                <X className="w-5 h-5" />
+              </button>
+
+              <h3 className="text-base font-bold mb-2 flex items-center gap-2">
+                <Ban className="w-4 h-4 text-destructive" />
+                {isBlocked
+                  ? isMalayalam
+                    ? "ടെക്നീഷ്യനെ അൺബ്ലോക്ക് ചെയ്യുക"
+                    : "Unblock Technician"
+                  : isMalayalam
+                  ? "ടെക്നീഷ്യനെ ബ്ലോക്ക് ചെയ്യുക"
+                  : "Block Technician"}
+              </h3>
+              <p className="text-xs text-muted-foreground mb-4 leading-relaxed">
+                {isBlocked
+                  ? isMalayalam
+                    ? "ഈ ക്രൂ അംഗത്തെ അൺബ്ലോക്ക് ചെയ്താൽ അവർ വീണ്ടും നിങ്ങളുടെ തിരയൽ ഫലങ്ങളിൽ ലഭ്യമാവുകയും ലഭ്യത റിക്വസ്റ്റുകൾ അയക്കാൻ സാധിക്കുകയും ചെയ്യും."
+                    : "Unblocking this crew member will allow them to appear in your search results and receive availability requests from you."
+                  : isMalayalam
+                  ? "ഈ ക്രൂ അംഗത്തെ ബ്ലോക്ക് ചെയ്താൽ അവർ നിങ്ങളുടെ തിരയൽ ഫലങ്ങളിൽ കാണില്ല. കൂടാതെ പരസ്പരം ലഭ്യത റിക്വസ്റ്റുകൾ അയക്കാനും സാധിക്കില്ല."
+                  : "Blocking this technician will remove them from your future search results and prevent any availability requests in either direction."}
+              </p>
+
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setShowBlockModal(false)}
+                  className="flex-1 text-xs"
+                >
+                  {isMalayalam ? "റദ്ദാക്കുക" : "Cancel"}
+                </Button>
+                <Button
+                  type="button"
+                  onClick={handleToggleBlock}
+                  disabled={submittingBlock}
+                  className={`flex-1 text-xs ${
+                    isBlocked
+                      ? "bg-primary text-primary-foreground hover:bg-primary/90"
+                      : "bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  }`}
+                >
+                  {submittingBlock
+                    ? isMalayalam
+                      ? "പ്രോസസ്സ് ചെയ്യുന്നു..."
+                      : "Processing..."
+                    : isBlocked
+                    ? isMalayalam
+                      ? "അൺബ്ലോക്ക് സ്ഥിരീകരിക്കുക"
+                      : "Confirm Unblock"
+                    : isMalayalam
+                    ? "ബ്ലോക്ക് ചെയ്യുക"
+                    : "Confirm Block"}
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* ── MODAL: REPORT PROFILE ─────────────────────────────────────────── */}
         {showReportModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
@@ -743,34 +978,48 @@ export default function CrewProfilePage({ params }) {
 
               <h3 className="text-base font-bold mb-2 flex items-center gap-2">
                 <Flag className="w-4 h-4 text-destructive" />
-                Report Profile
+                {isMalayalam ? "പ്രൊഫൈൽ റിപ്പോർട്ട് ചെയ്യുക" : "Report Profile"}
               </h3>
               <p className="text-xs text-muted-foreground mb-4">
-                Help keep CrewHive safe and professional. All reports are reviewed by moderators.
+                {isMalayalam
+                  ? "ക്രൂഹൈവ് സുരക്ഷിതവും പ്രൊഫഷണലുമാക്കാൻ സഹായിക്കുക. എല്ലാ റിപ്പോർട്ടുകളും മോഡറേറ്റർമാർ പരിശോധിക്കും."
+                  : "Help keep CrewHive safe and professional. All reports are reviewed by moderators."}
               </p>
 
               <form onSubmit={handleSubmitReport} className="space-y-4">
                 <div>
-                  <label className="block text-xs font-semibold mb-1.5">Reason *</label>
+                  <label className="block text-xs font-semibold mb-1.5">
+                    {isMalayalam ? "കാരണം *" : "Reason *"}
+                  </label>
                   <select
                     value={reportReason}
                     onChange={(e) => setReportReason(e.target.value)}
                     className="w-full bg-muted border border-border rounded-xl p-2.5 text-xs outline-none"
                   >
-                    <option value="unprofessional_conduct">Unprofessional conduct / no-show</option>
-                    <option value="fake_profile">Fake information or identity theft</option>
-                    <option value="inaccurate_rates">Inaccurate rates or misleading portfolio</option>
-                    <option value="inappropriate_content">Inappropriate communication</option>
+                    <option value="unprofessional_conduct">
+                      {isMalayalam ? "പ്രൊഫഷണൽ അല്ലാത്ത പെരുമാറ്റം / ഹാജരാകാതിരിക്കുക" : "Unprofessional conduct / no-show"}
+                    </option>
+                    <option value="fake_profile">
+                      {isMalayalam ? "വ്യാജ വിവരങ്ങൾ അല്ലെങ്കിൽ ഐഡന്റിറ്റി മോഷണം" : "Fake information or identity theft"}
+                    </option>
+                    <option value="inaccurate_rates">
+                      {isMalayalam ? "തെറ്റായ വേതന നിരക്ക് അല്ലെങ്കിൽ വഴിതെറ്റിക്കുന്ന പോർട്ട്ഫോളിയോ" : "Inaccurate rates or misleading portfolio"}
+                    </option>
+                    <option value="inappropriate_content">
+                      {isMalayalam ? "അനുയോജ്യമല്ലാത്ത ആശയവിനിമയം" : "Inappropriate communication"}
+                    </option>
                   </select>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold mb-1.5">Additional Details</label>
+                  <label className="block text-xs font-semibold mb-1.5">
+                    {isMalayalam ? "കൂടുതൽ വിവരങ്ങൾ" : "Additional Details"}
+                  </label>
                   <textarea
                     rows={3}
                     value={reportDetails}
                     onChange={(e) => setReportDetails(e.target.value)}
-                    placeholder="Provide any relevant context..."
+                    placeholder={isMalayalam ? "വിശദാംശങ്ങൾ നൽകുക..." : "Provide any relevant context..."}
                     className="w-full bg-muted border border-border rounded-xl p-3 text-xs outline-none resize-none"
                   />
                 </div>
@@ -782,14 +1031,155 @@ export default function CrewProfilePage({ params }) {
                     onClick={() => setShowReportModal(false)}
                     className="flex-1 text-xs"
                   >
-                    Cancel
+                    {isMalayalam ? "റദ്ദാക്കുക" : "Cancel"}
                   </Button>
                   <Button
                     type="submit"
                     disabled={submittingReport}
                     className="flex-1 bg-destructive text-destructive-foreground hover:bg-destructive/90 text-xs"
                   >
-                    {submittingReport ? "Submitting..." : "Submit Report"}
+                    {submittingReport
+                      ? isMalayalam ? "സമർപ്പിക്കുന്നു..." : "Submitting..."
+                      : isMalayalam ? "റിപ്പോർട്ട് സമർപ്പിക്കുക" : "Submit Report"}
+                  </Button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* ── MODAL: REQUEST DATE HOLD (I7 [P2]) ──────────────────────────────── */}
+        {showHoldModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+            <div className="bg-card border border-border rounded-2xl p-6 max-w-lg w-full shadow-2xl relative">
+              <button
+                onClick={() => setShowHoldModal(false)}
+                className="absolute right-4 top-4 text-muted-foreground hover:text-foreground"
+              >
+                <X className="w-5 h-5" />
+              </button>
+
+              <div className="flex items-center gap-3 mb-5 pb-4 border-b border-border">
+                <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
+                  <CalendarCheck className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold">
+                    {isMalayalam ? "48 മണിക്കൂർ തീയതി ഹോൾഡ് അഭ്യർത്ഥിക്കുക" : "Request 48-Hour Date Hold"}
+                  </h3>
+                  <p className="text-xs text-muted-foreground">
+                    To: <strong>{crew.name}</strong> ({crew.role})
+                  </p>
+                </div>
+              </div>
+
+              <form onSubmit={handleRequestDateHold} className="space-y-4">
+                <div>
+                  <label className="block text-xs font-semibold mb-1.5">
+                    {isMalayalam ? "ഇവന്റ് / പ്രൊഡക്ഷൻ പേര് *" : "Event / Show Name *"}
+                  </label>
+                  <Input
+                    type="text"
+                    required
+                    placeholder="e.g. Cochin Music Fest 2027 / Ad Shoot"
+                    value={holdEventName}
+                    onChange={(e) => setHoldEventName(e.target.value)}
+                    className="text-xs"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-semibold mb-1.5">
+                      {isMalayalam ? "ആരംഭ തീയതി *" : "Start Date *"}
+                    </label>
+                    <DatePicker
+                      value={holdDate}
+                      onChange={(e) => setHoldDate(e.target.value)}
+                      min={new Date().toISOString().split("T")[0]}
+                      className="text-xs"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold mb-1.5">
+                      {isMalayalam ? "അവസാന തീയതി" : "End Date (Optional)"}
+                    </label>
+                    <DatePicker
+                      value={holdEndDate}
+                      onChange={(e) => setHoldEndDate(e.target.value)}
+                      min={holdDate || new Date().toISOString().split("T")[0]}
+                      className="text-xs"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-semibold mb-1.5">
+                      {isMalayalam ? "ലൊക്കേഷൻ" : "Location"}
+                    </label>
+                    <Input
+                      type="text"
+                      placeholder="e.g. Kochi"
+                      value={holdLocation}
+                      onChange={(e) => setHoldLocation(e.target.value)}
+                      className="text-xs"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold mb-1.5">
+                      {isMalayalam ? "വാഗ്ദാനം ചെയ്ത നിരക്ക് (₹/day)" : "Offered Rate (₹/day)"}
+                    </label>
+                    <Input
+                      type="number"
+                      placeholder="e.g. 6000"
+                      value={holdOfferedRate}
+                      onChange={(e) => setHoldOfferedRate(e.target.value)}
+                      className="text-xs"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold mb-1.5">
+                    {isMalayalam ? "പ്രത്യേക കുറിപ്പുകൾ" : "Notes / Shift Details"}
+                  </label>
+                  <textarea
+                    rows={2}
+                    value={holdNotes}
+                    onChange={(e) => setHoldNotes(e.target.value)}
+                    placeholder={
+                      isMalayalam
+                        ? "ഷിഫ്റ്റ് സമയം, ഉപകരണങ്ങൾ, ലൊക്കേഷൻ വിശദാംശങ്ങൾ..."
+                        : "Shift timings, equipment requirements, venue details..."
+                    }
+                    className="w-full bg-muted border border-border rounded-xl p-2.5 text-xs outline-none resize-none"
+                  />
+                </div>
+
+                <p className="text-[11px] text-muted-foreground bg-muted/40 p-2.5 rounded-lg">
+                  {isMalayalam
+                    ? "കുറിപ്പ്: തീയതി ഹോൾഡ് എന്നത് ഒരു താൽക്കാലിക റിസർവേഷനാണ്. ക്രൂ അംഗം ഇത് സ്വീകരിച്ചാൽ മാത്രമേ സ്ഥിരീകരിക്കപ്പെടുകയുള്ളൂ."
+                    : "Note: A date hold reserves the technician's date for 48 hours. It becomes confirmed only when the technician explicitly accepts."}
+                </p>
+
+                <div className="flex gap-2 pt-2 border-t border-border">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setShowHoldModal(false)}
+                    className="flex-1 text-xs"
+                  >
+                    {isMalayalam ? "റദ്ദാക്കുക" : "Cancel"}
+                  </Button>
+                  <Button
+                    type="submit"
+                    disabled={submittingHold}
+                    className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90 text-xs font-semibold"
+                  >
+                    {submittingHold
+                      ? isMalayalam ? "അഭ്യർത്ഥിക്കുന്നു..." : "Requesting..."
+                      : isMalayalam ? "ഹോൾഡ് അയയ്ക്കുക" : "Submit Date Hold"}
                   </Button>
                 </div>
               </form>

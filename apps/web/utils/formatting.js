@@ -91,6 +91,7 @@ export const capitalize = (str) => {
  * @returns {string} - Readable status
  */
 export const formatStatus = (status) => {
+  if (!status) return '';
   const statusMap = {
     pending: 'Pending',
     approved: 'Approved',
@@ -98,8 +99,16 @@ export const formatStatus = (status) => {
     accepted: 'Accepted',
     completed: 'Completed',
     cancelled: 'Cancelled',
+    confirmed_match: 'Confirmed Match',
+    no_response: 'No Response',
+    expired: 'Expired',
   };
-  return statusMap[status] || capitalize(status);
+  const s = String(status).toLowerCase();
+  if (statusMap[s]) return statusMap[s];
+  return s
+    .split('_')
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(' ');
 };
 
 /**

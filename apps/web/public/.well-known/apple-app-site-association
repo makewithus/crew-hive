@@ -1,0 +1,34 @@
+{
+  "applinks": {
+    "apps": [],
+    "details": [
+      {
+        "appIDs": [
+          "TEAMID.com.crewhive.app",
+          "com.crewhive.app"
+        ],
+        "components": [
+          {
+            "/": "/organizer/crew/*",
+            "comment": "Public crew profile deep links"
+          },
+          {
+            "/": "/crew/*",
+            "comment": "Crew portal and profile deep links"
+          }
+        ],
+        "paths": [
+          "/organizer/crew/*",
+          "/crew/*"
+        ]
+      }
+    ]
+  },
+  "webcredentials": {
+    "apps": [
+      "TEAMID.com.crewhive.app",
+      "com.crewhive.app"
+    ]
+  }
+}
+

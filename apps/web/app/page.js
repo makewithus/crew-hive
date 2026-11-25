@@ -36,7 +36,6 @@ import {
   SlidersHorizontal,
   Tv2,
   Check,
-  ShieldCheck,
   Info,
   Building2,
   Quote,
@@ -44,6 +43,8 @@ import {
   Radio,
   ExternalLink,
   ChevronRight,
+  UserPlus,
+  Briefcase,
 } from "lucide-react";
 
 export default function Home() {
@@ -56,22 +57,43 @@ export default function Home() {
   const [signUpRole, setSignUpRole] = useState(null); // 'crew' | 'organizer' | null
   const [activeWorkflowTab, setActiveWorkflowTab] = useState("crew"); // 'crew' | 'recruiter'
 
-  // Preserve working redirect for authenticated users
+  // Read stored role to avoid home page flash for authenticated recruiters/crew
+  const [cachedRole] = useState(() => {
+    if (typeof window !== "undefined") {
+      try {
+        return sessionStorage.getItem("crewhive_user_role") || null;
+      } catch (_) {
+        return null;
+      }
+    }
+    return null;
+  });
+
+  // Preserve instant redirect for authenticated users without landing page flash
   useEffect(() => {
-    if (loading || !currentUser) return;
+    const activeRole = userRole || cachedRole;
     if (isSuperAdmin) {
-      router.push("/super-admin/dashboard");
+      router.replace("/super-admin/dashboard");
       return;
     }
-    if (userRole === "crew") {
-      router.push("/crew/dashboard");
+    if (activeRole === "organizer") {
+      router.replace("/organizer/dashboard");
       return;
     }
-    if (userRole === "organizer") {
-      router.push("/organizer/dashboard");
+    if (activeRole === "crew") {
+      router.replace("/crew/dashboard");
       return;
     }
-  }, [loading, currentUser, userRole, isSuperAdmin, userApproved, router]);
+  }, [loading, currentUser, userRole, cachedRole, isSuperAdmin, userApproved, router]);
+
+  // If already authenticated or resolving an organizer/crew session, show seamless dark loader
+  if (cachedRole === "organizer" || userRole === "organizer" || cachedRole === "crew" || userRole === "crew" || isSuperAdmin) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="w-8 h-8 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+      </div>
+    );
+  }
 
   const handleOpenSignUp = (role = null) => {
     if (role === "crew") {
@@ -177,7 +199,7 @@ export default function Home() {
               type="button"
               className="w-full sm:w-auto min-h-[48px] sm:h-14 inline-flex items-center justify-center gap-2 bg-gradient-to-b from-[#F5A623] via-[#E89818] to-[#D48208] text-zinc-950 font-bold px-5 sm:px-6 py-3.5 rounded-xl border border-[#FFC266]/40 hover:brightness-105 active:scale-[0.98] transition-all shadow-[inset_0_1px_0_rgba(255,255,255,0.4),0_2px_8px_rgba(0,0,0,0.5)] text-sm sm:text-base cursor-pointer group shrink-0 text-center"
             >
-              <ConsoleFaderIcon className="w-5 h-5 shrink-0" />
+              <UserPlus className="w-5 h-5 shrink-0" />
               <span className="tracking-tight text-center leading-tight">{t("home.hero.primaryCta", "Create free profile")}</span>
               <ChevronRight className="w-4 h-4 text-zinc-950/70 group-hover:translate-x-0.5 transition-transform shrink-0" />
             </button>
@@ -187,7 +209,7 @@ export default function Home() {
               type="button"
               className="w-full sm:w-auto min-h-[48px] sm:h-14 inline-flex items-center justify-center gap-2 bg-gradient-to-b from-zinc-800/90 to-zinc-900/95 hover:bg-zinc-800 border border-zinc-700/80 hover:border-zinc-500 text-zinc-100 hover:text-white font-semibold px-5 sm:px-6 py-3.5 rounded-xl active:scale-[0.98] transition-all shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_2px_8px_rgba(0,0,0,0.5)] text-sm sm:text-base cursor-pointer group shrink-0 text-center"
             >
-              <ProductionClapperIcon className="w-5 h-5 text-amber-400 shrink-0" />
+              <Briefcase className="w-5 h-5 text-amber-400 shrink-0" />
               <span className="tracking-tight text-center leading-tight">{t("home.hero.secondaryCta", "I'm hiring crew")}</span>
               <ChevronRight className="w-4 h-4 text-zinc-400 group-hover:translate-x-0.5 transition-transform shrink-0" />
             </button>
@@ -235,7 +257,7 @@ export default function Home() {
               type="button"
               className="w-full md:w-auto inline-flex items-center justify-center gap-2 bg-gradient-to-b from-[#F5A623] to-[#DF9115] text-zinc-950 font-bold text-xs sm:text-sm px-5 py-3 rounded-xl hover:brightness-105 active:scale-[0.98] transition-all shrink-0 cursor-pointer shadow-[inset_0_1px_0_rgba(255,255,255,0.35),0_2px_6px_rgba(0,0,0,0.4)] min-h-[44px]"
             >
-              <ConsoleFaderIcon className="w-4 h-4 shrink-0" />
+              <UserPlus className="w-4 h-4 shrink-0" />
               <span>{t("common.nav.createProfile", "Create free profile")}</span>
             </button>
           </div>
@@ -419,7 +441,7 @@ export default function Home() {
                           : "bg-purple-500/10 text-purple-400"
                       }`}
                     >
-                      ✓
+                      <Check className="w-3.5 h-3.5" />
                     </span>
                   </div>
                   <h3 className="text-base font-bold text-foreground mb-2">
@@ -523,7 +545,7 @@ export default function Home() {
               type="button"
               className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-gradient-to-b from-[#F5A623] to-[#DF9115] text-zinc-950 font-bold text-xs sm:text-sm px-5 sm:px-6 py-3 rounded-xl hover:brightness-105 active:scale-[0.98] transition-all shrink-0 cursor-pointer shadow-[inset_0_1px_0_rgba(255,255,255,0.35),0_2px_6px_rgba(0,0,0,0.4)] min-h-[44px]"
             >
-              <ConsoleFaderIcon className="w-4 h-4 shrink-0" />
+              <UserPlus className="w-4 h-4 shrink-0" />
               <span>{t("common.nav.createProfile", "Create free profile")}</span>
               <ChevronRight className="w-3.5 h-3.5 text-zinc-950/70" />
             </button>
@@ -564,8 +586,8 @@ export default function Home() {
 
                 {(getSection("associations.section.benefits") || []).map((b, bidx) => (
                   <div key={bidx} className="flex items-start gap-3">
-                    <span className="w-5 h-5 rounded-full bg-primary/15 border border-primary/30 flex items-center justify-center text-primary text-xs font-bold shrink-0 mt-0.5">
-                      ✓
+                    <span className="w-5 h-5 rounded-full bg-primary/15 border border-primary/30 flex items-center justify-center text-primary shrink-0 mt-0.5">
+                      <Check className="w-3 h-3" />
                     </span>
                     <div>
                       <h5 className="text-sm font-bold text-foreground">{b.title}</h5>

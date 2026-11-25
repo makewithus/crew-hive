@@ -1,5 +1,6 @@
 "use client";
 
+import { apiFetch } from "@/lib/api-client";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
@@ -12,7 +13,6 @@ import {
   Film,
   CircleDot,
   ClipboardList,
-  RefreshCcw,
   Calendar,
   BarChart3,
   UserCheck,
@@ -45,7 +45,7 @@ export default function SuperAdminDashboard() {
     const fetchStats = async () => {
       try {
         const token = await auth.currentUser?.getIdToken();
-        const res = await fetch("/api/admin/stats", {
+        const res = await apiFetch("/api/admin/stats", {
           headers: { Authorization: `Bearer ${token}` },
         });
         const result = await res.json();
@@ -120,7 +120,7 @@ export default function SuperAdminDashboard() {
         {
           label: "Pending Crew",
           value: stats.pendingCrew,
-          icon: <RefreshCcw className="w-5 h-5" />,
+          icon: <Clock className="w-5 h-5" />,
           color: "text-orange-400",
           bg: "bg-orange-400/10 border-orange-400/20",
         },

@@ -1,13 +1,13 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { apiFetch } from "@/lib/api-client";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/hooks/useAuth";
 import { useLanguage } from "@/context/LanguageContext";
 import { calculateProfileCompleteness, PARENT_ROLES } from "@/utils/taxonomy";
 import AvailabilityToggle from "@/components/AvailabilityToggle";
-import LanguageToggle from "@/components/LanguageToggle";
 import Header from "@/components/Header";
 import AuthGuard from "@/components/AuthGuard";
 import { USER_ROLES } from "@/utils/constants";
@@ -21,46 +21,88 @@ import {
   Clock,
   AlertTriangle,
   ArrowRight,
-  ShieldCheck,
   Award,
   ExternalLink,
   ChevronRight,
-  RefreshCw,
 } from "lucide-react";
 import { toast } from "sonner";
 
 export default function CrewDashboardPage() {
-  const { currentUser, userPhone, userRole } = useAuth();
+  const { currentUser, userPhone, userRole, loading: authLoading, refreshUser } = useAuth();
   const router = useRouter();
   const { t, locale } = useLanguage();
   const isMl = locale === "ml";
 
-  const [crew, setCrew] = useState(null);
+  // Pre-load from sessionStorage for INSTANT frame-0 display after onboarding
+  const [crew, setCrew] = useState(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const cached = sessionStorage.getItem("crewhive_cached_crew_profile");
+        if (cached) return JSON.parse(cached);
+      } catch (_) {}
+    }
+    return null;
+  });
+
   const [requests, setRequests] = useState([]);
   const [activeTab, setActiveTab] = useState("pending");
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(() => {
+    if (typeof window !== "undefined") {
+      try {
+        if (sessionStorage.getItem("crewhive_cached_crew_profile")) return false;
+      } catch (_) {}
+    }
+    return true;
+  });
   const [error, setError] = useState("");
   const [respondingId, setRespondingId] = useState(null);
   const [dismissMissedAlert, setDismissMissedAlert] = useState(false);
 
-  const phone = userPhone || currentUser?.phoneNumber || (currentUser?.uid && /^\d+$/.test(currentUser.uid) ? `+${currentUser.uid}` : null);
+  const phone =
+    userPhone ||
+    currentUser?.phoneNumber ||
+    (currentUser?.uid && /^\d+$/.test(currentUser.uid) ? `+${currentUser.uid}` : null) ||
+    (typeof window !== "undefined" ? sessionStorage.getItem("crewhive_user_phone") : null);
+
+  const crewRef = useRef(crew);
+  crewRef.current = crew;
+  const isFetchingRef = useRef(false);
+  const fetchedPhoneRef = useRef(null);
 
   // Fetch crew profile & incoming requests
-  const fetchData = useCallback(async () => {
-    if (!phone) return;
+  const fetchData = useCallback(async (force = false) => {
+    let activePhone = phone;
+    if (!activePhone) {
+      try {
+        const meRes = await apiFetch("/api/auth/me");
+        if (meRes.ok) {
+          const meJson = await meRes.json();
+          activePhone = meJson.data?.phone || (meJson.data?.id ? `+${meJson.data.id}` : null);
+        }
+      } catch (_) {}
+    }
+
+    if (!activePhone) {
+      if (!authLoading) setLoading(false);
+      return;
+    }
+
+    if (!force && isFetchingRef.current) return;
+    if (!force && fetchedPhoneRef.current === activePhone) return;
+
+    isFetchingRef.current = true;
     setError("");
 
     try {
       const [profileRes, requestsRes, availRes] = await Promise.all([
-        fetch(`/api/crew/profile?phone=${encodeURIComponent(phone)}`),
-        fetch(`/api/crew/requests?phone=${encodeURIComponent(phone)}`),
-        fetch(`/api/crew/availability?phone=${encodeURIComponent(phone)}`),
+        apiFetch(`/api/crew/profile?phone=${encodeURIComponent(activePhone)}`),
+        apiFetch(`/api/crew/requests?phone=${encodeURIComponent(activePhone)}`),
+        apiFetch(`/api/crew/availability?phone=${encodeURIComponent(activePhone)}`),
       ]);
 
       if (profileRes.ok) {
         const pJson = await profileRes.json();
         if (pJson.data) {
-          // Merge with availability check data (enforcing auto-expiry)
           if (availRes.ok) {
             const aJson = await availRes.json();
             pJson.data.available = aJson.data?.available ?? pJson.data.available;
@@ -68,9 +110,15 @@ export default function CrewDashboardPage() {
             pJson.data.availableExpiresAt = aJson.data?.availableExpiresAt ?? pJson.data.availableExpiresAt;
           }
           setCrew(pJson.data);
+          fetchedPhoneRef.current = activePhone;
+          if (typeof window !== "undefined") {
+            try {
+              sessionStorage.setItem("crewhive_cached_crew_profile", JSON.stringify(pJson.data));
+              sessionStorage.setItem("crewhive_user_phone", activePhone);
+            } catch (_) {}
+          }
         }
-      } else {
-        // If not found, redirect to onboarding
+      } else if (profileRes.status === 404 && !crewRef.current) {
         router.push("/crew/onboarding");
         return;
       }
@@ -81,11 +129,12 @@ export default function CrewDashboardPage() {
       }
     } catch (err) {
       console.error("[CrewDashboard] Fetch error:", err);
-      setError(err.message || "Failed to load dashboard data.");
+      if (!crewRef.current) setError(err.message || "Failed to load dashboard data.");
     } finally {
+      isFetchingRef.current = false;
       setLoading(false);
     }
-  }, [phone, router]);
+  }, [phone, authLoading, router]);
 
   useEffect(() => {
     fetchData();
@@ -109,7 +158,7 @@ export default function CrewDashboardPage() {
     setError("");
 
     try {
-      const res = await fetch("/api/crew/requests", {
+      const res = await apiFetch("/api/crew/requests", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -156,7 +205,7 @@ export default function CrewDashboardPage() {
   // Switch availability OFF from missed requests warning
   const handleSwitchOffMissed = async () => {
     try {
-      await fetch("/api/crew/availability", {
+      await apiFetch("/api/crew/availability", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ phone, available: false }),
@@ -220,7 +269,7 @@ export default function CrewDashboardPage() {
       <div className="min-h-screen bg-background text-foreground pb-16">
         {/* Top Bar / Greeting */}
         <div className="border-b border-border bg-card/40">
-          <div className="max-w-6xl mx-auto px-4 py-6 sm:py-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="max-w-6xl mx-auto px-4 py-4 sm:py-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
               <div className="flex items-center gap-2">
                 <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
@@ -233,20 +282,18 @@ export default function CrewDashboardPage() {
             </div>
 
             <div className="flex items-center gap-3">
-              <LanguageToggle />
-              <button
-                onClick={fetchData}
-                className="p-2 rounded-xl bg-card border border-border text-muted-foreground hover:text-foreground transition-all"
-                title="Refresh Dashboard"
-                aria-label="Refresh Dashboard"
+              <Link
+                href="/crew/setup"
+                className="hidden sm:inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-primary text-black font-bold text-xs hover:bg-primary/90 transition-all shadow-sm"
               >
-                <RefreshCw className="w-4 h-4" />
-              </button>
+                <User className="w-3.5 h-3.5" />
+                <span>{t("dashboard.editProfile", "Edit Profile")}</span>
+              </Link>
             </div>
           </div>
         </div>
 
-        <div className="max-w-6xl mx-auto px-4 py-8 space-y-8">
+        <div className="max-w-6xl mx-auto px-4 py-5 sm:py-6 space-y-6">
           {error && (
             <div className="p-4 bg-red-950/80 border border-red-800 text-red-200 rounded-xl text-sm flex items-start gap-2.5">
               <AlertTriangle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
@@ -283,7 +330,7 @@ export default function CrewDashboardPage() {
                 <button
                   type="button"
                   onClick={() => setDismissMissedAlert(true)}
-                  className="px-3 py-1.5 rounded-xl text-xs font-semibold text-muted-foreground hover:text-foreground transition-all"
+                  className="px-3 py-1.5 rounded-xl text-xs font-semibold text-muted-foreground hover:text-foreground transition-all cursor-pointer"
                 >
                   {t("dashboard.keepAvailable", "Keep Available")}
                 </button>
@@ -291,13 +338,13 @@ export default function CrewDashboardPage() {
             </div>
           )}
 
-          {/* ─── SECTION 1: WELCOME & ACCOUNT CARD ─── */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* User Profile Card */}
-            <div className="lg:col-span-1 bg-card border border-border rounded-2xl p-6 shadow-sm flex flex-col justify-between">
+          {/* ─── SECTION 1: 3-CARD BALANCED OVERVIEW ─── */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {/* Card 1: User Profile Summary */}
+            <div className="bg-card border border-border rounded-2xl p-6 shadow-sm flex flex-col justify-between space-y-5">
               <div>
-                <div className="flex items-center gap-4 mb-4">
-                  <div className="w-16 h-16 rounded-full bg-muted border-2 border-border overflow-hidden flex items-center justify-center shrink-0">
+                <div className="flex items-center gap-3.5 mb-4">
+                  <div className="w-14 h-14 rounded-full bg-muted border-2 border-border overflow-hidden flex items-center justify-center shrink-0">
                     {crew?.profileImage ? (
                       <img
                         src={crew.profileImage}
@@ -305,26 +352,26 @@ export default function CrewDashboardPage() {
                         className="w-full h-full object-cover"
                       />
                     ) : (
-                      <User className="w-8 h-8 text-muted-foreground" />
+                      <User className="w-7 h-7 text-muted-foreground" />
                     )}
                   </div>
 
                   <div className="min-w-0 flex-1">
-                    <h3 className="font-extrabold text-lg text-foreground truncate">
-                      {crew?.name}
+                    <h3 className="font-extrabold text-base text-foreground truncate">
+                      {crew?.name || "Technician"}
                     </h3>
                     <p className="text-xs font-semibold text-primary truncate">
                       {displayRole}
                     </p>
-                    <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1">
-                      <MapPin className="w-3.5 h-3.5" />
+                    <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1 truncate">
+                      <MapPin className="w-3.5 h-3.5 shrink-0" />
                       <span>{crew?.city || "Kerala"}</span>
                     </p>
                   </div>
                 </div>
 
-                {/* Account Status Badge */}
-                <div className="space-y-2 pt-2 border-t border-border/60">
+                {/* Account Status & Rate */}
+                <div className="space-y-2 pt-3 border-t border-border/60">
                   <div className="flex items-center justify-between text-xs">
                     <span className="text-muted-foreground">
                       {isMl ? "അക്കൗണ്ട് നില:" : "Account Status:"}
@@ -344,8 +391,8 @@ export default function CrewDashboardPage() {
 
                   {crew?.associationMembership?.verified && (
                     <div className="flex items-center gap-1.5 text-xs text-blue-400 font-semibold pt-1">
-                      <Award className="w-4 h-4" />
-                      <span>{crew.associationMembership.name} Verified Member</span>
+                      <Award className="w-4 h-4 shrink-0" />
+                      <span className="truncate">{crew.associationMembership.name} {isMl ? "അംഗം" : "Member"}</span>
                     </div>
                   )}
 
@@ -365,34 +412,40 @@ export default function CrewDashboardPage() {
                 </div>
               </div>
 
-              <div className="pt-5 mt-4 border-t border-border flex gap-2">
+              <div className="pt-4 border-t border-border flex gap-2">
                 <Link
                   href="/crew/setup"
-                  className="flex-1 py-2 px-3 rounded-xl bg-muted border border-border hover:border-primary/60 text-xs font-semibold text-foreground text-center transition-all"
+                  className="flex-1 py-2 px-3 rounded-xl bg-muted border border-border hover:border-primary/60 text-xs font-semibold text-foreground text-center transition-all cursor-pointer"
                 >
                   {t("dashboard.editProfile", "Edit Full Profile")}
                 </Link>
                 <Link
                   href="/crew/requests"
-                  className="py-2 px-3 rounded-xl bg-card border border-border hover:border-primary/60 text-xs font-semibold text-foreground text-center transition-all"
+                  className="py-2 px-3 rounded-xl bg-card border border-border hover:border-primary/60 text-xs font-semibold text-foreground text-center transition-all cursor-pointer"
                 >
                   {t("dashboard.viewAllRequests", "Manage Requests")}
                 </Link>
               </div>
             </div>
 
-            {/* Availability Status & Toggle */}
-            <div className="lg:col-span-2 space-y-6">
-              <div className="bg-card border border-border rounded-2xl p-6 shadow-sm">
-                <div className="flex items-center justify-between mb-4">
+            {/* Card 2: Live Availability */}
+            <div className="bg-card border border-border rounded-2xl p-6 shadow-sm flex flex-col justify-between space-y-4">
+              <div>
+                <div className="flex items-center justify-between mb-3">
                   <h3 className="text-base font-bold text-foreground">
                     {t("dashboard.availabilityStatus", "Availability Status")}
                   </h3>
-                  <span className="text-xs text-muted-foreground">
+                  <span className="text-xs">
                     {crew?.available ? (
-                      <span className="text-green-400 font-medium">● Visible in Recruiter Searches</span>
+                      <span className="text-green-400 font-medium inline-flex items-center gap-1">
+                        <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
+                        <span>Visible in Searches</span>
+                      </span>
                     ) : (
-                      <span className="text-zinc-500 font-medium">○ Hidden from Searches</span>
+                      <span className="text-zinc-500 font-medium inline-flex items-center gap-1">
+                        <span className="w-2 h-2 rounded-full bg-zinc-600" />
+                        <span>Hidden</span>
+                      </span>
                     )}
                   </span>
                 </div>
@@ -407,66 +460,77 @@ export default function CrewDashboardPage() {
                 />
               </div>
 
-              {/* Profile Completeness Widget */}
-              <div className="bg-card border border-border rounded-2xl p-6 shadow-sm space-y-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="text-base font-bold text-foreground">
-                      {t("dashboard.profileCompleteness", "Profile Completeness")}
-                    </h3>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      {completeness.nextAction
-                        ? isMl
-                          ? completeness.nextAction.textMl
-                          : completeness.nextAction.textEn
-                        : (isMl ? "നിങ്ങളുടെ പ്രൊഫൈൽ പൂർണ്ണമാണ്!" : "Your profile is 100% complete!")}
-                    </p>
-                  </div>
+              <div className="pt-3 border-t border-border/60 text-xs text-muted-foreground">
+                {crew?.available ? (
+                  <p className="text-[11px] leading-relaxed">
+                    {isMl
+                      ? "നിങ്ങൾ സെർച്ചിൽ ലഭ്യമാണ്. ഓർഗനൈസർമാർക്ക് നേരിട്ട് റിക്വസ്റ്റ് അയക്കാം."
+                      : "Recruiters searching your district can directly view and book your services."}
+                  </p>
+                ) : (
+                  <p className="text-[11px] leading-relaxed">
+                    {isMl
+                      ? "ഇവൻ്റ് വർക്കുകൾ ലഭിക്കാൻ ലഭ്യത ഓൺ ചെയ്യുക (7 ദിവസത്തേക്ക്)."
+                      : "Turn on your availability to be discovered and receive direct booking offers."}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {/* Card 3: Profile Completeness */}
+            <div className="bg-card border border-border rounded-2xl p-6 shadow-sm flex flex-col justify-between space-y-4">
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-base font-bold text-foreground">
+                    {t("dashboard.profileCompleteness", "Profile Completeness")}
+                  </h3>
                   <div className="text-2xl font-black text-primary">
                     {completeness.percentage}%
                   </div>
                 </div>
 
                 {/* Progress bar */}
-                <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
+                <div className="w-full h-2 bg-muted rounded-full overflow-hidden mb-3">
                   <div
                     className="h-full bg-primary transition-all duration-500 rounded-full"
                     style={{ width: `${completeness.percentage}%` }}
                   />
                 </div>
 
-                {/* Missing Fields & Action */}
-                {completeness.missingFields.length > 0 ? (
-                  <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
-                    <div className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
-                      <span>{isMl ? "ചേർക്കാൻ ബാക്കിയുള്ളവ:" : "Missing:"}</span>
-                      {completeness.missingFields.slice(0, 3).map((f) => (
-                        <span
-                          key={f.key}
-                          className="px-2 py-0.5 rounded-md bg-muted text-[11px] font-medium text-foreground border border-border"
-                        >
-                          {isMl ? f.labelMl : f.labelEn}
-                        </span>
-                      ))}
-                      {completeness.missingFields.length > 3 && (
-                        <span className="text-[11px]">+{completeness.missingFields.length - 3} more</span>
-                      )}
-                    </div>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  {completeness.nextAction
+                    ? isMl
+                      ? completeness.nextAction.textMl
+                      : completeness.nextAction.textEn
+                    : (isMl ? "നിങ്ങളുടെ പ്രൊഫൈൽ പൂർണ്ണമാണ്!" : "Your profile is 100% complete!")}
+                </p>
 
-                    <Link
-                      href="/crew/setup"
-                      className="inline-flex items-center gap-1 text-xs font-bold text-primary hover:underline"
-                    >
-                      <span>{isMl ? "വിവരങ്ങൾ നൽകുക" : "Complete Now"}</span>
-                      <ChevronRight className="w-3.5 h-3.5" />
-                    </Link>
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-1.5 text-xs text-green-400 font-semibold pt-1">
-                    <CheckCircle2 className="w-4 h-4" />
-                    <span>{isMl ? "എല്ലാ വിവരങ്ങളും പൂർത്തിയായിട്ടുണ്ട്!" : "Profile is complete and ready for booking!"}</span>
+                {completeness.missingFields.length > 0 && (
+                  <div className="flex flex-wrap items-center gap-1.5 pt-3 text-xs">
+                    <span className="text-[11px] text-muted-foreground">{isMl ? "ബാക്കി:" : "Missing:"}</span>
+                    {completeness.missingFields.slice(0, 2).map((f) => (
+                      <span
+                        key={f.key}
+                        className="px-2 py-0.5 rounded-md bg-muted text-[10px] font-medium text-foreground border border-border"
+                      >
+                        {isMl ? f.labelMl : f.labelEn}
+                      </span>
+                    ))}
+                    {completeness.missingFields.length > 2 && (
+                      <span className="text-[10px] text-muted-foreground">+{completeness.missingFields.length - 2}</span>
+                    )}
                   </div>
                 )}
+              </div>
+
+              <div className="pt-3 border-t border-border/60">
+                <Link
+                  href="/crew/setup"
+                  className="w-full py-2 px-3 rounded-xl bg-primary/10 border border-primary/30 hover:bg-primary/20 text-xs font-bold text-primary text-center transition-all inline-flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  <span>{isMl ? "പ്രൊഫൈൽ പൂർത്തിയാക്കുക" : "Complete Profile"}</span>
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </Link>
               </div>
             </div>
           </div>

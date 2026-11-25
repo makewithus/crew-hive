@@ -109,6 +109,32 @@
       "cta": "For Associations Form",
       "href": "/#for-associations"
     }
+  },
+  "deletion": {
+    "title": "Account & Data Deletion",
+    "subtitle": "Digital Personal Data Protection (DPDP) Act Compliance",
+    "intro": "In accordance with India's Digital Personal Data Protection Act, 2023, you have the full right to delete your CrewHive account and request erasure of your personal data at any time.",
+    "erasedTitle": "What Data is Permanently Erased",
+    "erasedItems": [
+      "Your personal profile, name, phone number, and account credentials",
+      "Your professional roles, specialisations, experience, bio, and portfolio links",
+      "Your active availability status, location history, and availability request records",
+      "Your saved shortlists, custom show rosters, and association memberships",
+      "Your device registration tokens, in-app notifications, and block lists"
+    ],
+    "retainedTitle": "What is Retained or Anonymized",
+    "retainedDesc": "To prevent fraud and comply with statutory dispute obligations, anonymized moderation records (names and phone numbers stripped) and dispute audit logs (numeric IDs only) are retained strictly as required by law.",
+    "howToTitle": "How to Request Deletion",
+    "howToDesc": "You can delete your account immediately using the secure form below when signed in, from the mobile application (Settings > Account > Delete Account), or by sending an email with proof of phone ownership to support@crewhive.in.",
+    "confirmTitle": "Delete Account Permanently",
+    "confirmWarning": "Warning: This action is permanent and immediate. Once deleted, your profile, work records, and connections cannot be recovered.",
+    "confirmCheckbox": "I understand that deleting my account will permanently erase my profile and all associated data from CrewHive.",
+    "deleteButton": "Permanently Delete My Account",
+    "deleting": "Deleting Account...",
+    "signInPrompt": "Sign in to delete your account directly",
+    "signInButton": "Sign In with Phone",
+    "deletedTitle": "Account Successfully Deleted",
+    "deletedMessage": "Your CrewHive account and associated personal data have been permanently erased from our systems."
   }
 }
 

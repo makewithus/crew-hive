@@ -3,25 +3,25 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { useAuth } from "@/hooks/useAuth";
 import { useLanguage } from "@/context/LanguageContext";
+import { sendOtp, verifyOtp, prewarmRecaptcha } from "@/lib/auth";
+import { apiFetch } from "@/lib/api-client";
+import { isValidPhone } from "@/utils/validators";
+import CountryCodeSelect from "@/components/CountryCodeSelect";
+import LanguageToggle from "@/components/LanguageToggle";
 import {
   PARENT_ROLES,
   CITIES,
   CURRENT_CONSENT_VERSION,
 } from "@/utils/taxonomy";
-import { sendOtp, verifyOtp, isValidPhone, prewarmRecaptcha } from "@/lib/auth";
-import LanguageToggle from "@/components/LanguageToggle";
+
 import {
   Lightbulb,
   Volume2,
-  Boxes,
+  Layers,
   Flame,
   Camera,
-  Clapperboard,
-  Palette,
-  Video,
-  Sliders,
-  Tv,
   Check,
   CheckCircle2,
   ArrowRight,
@@ -29,41 +29,30 @@ import {
   Phone,
   MapPin,
   User,
-  ShieldCheck,
+  Lock,
   Clock,
-  AlertTriangle,
   Zap,
+  FileText,
+  Users,
 } from "lucide-react";
 import { toast } from "sonner";
 
 const ICON_MAP = {
   Lightbulb,
   Volume2,
-  Boxes,
+  Layers,
   Flame,
   Camera,
-  Clapperboard,
-  Palette,
-  Video,
-  Sliders,
-  Tv,
 };
-
-const COUNTRY_CODES = [
-  { code: "+91", label: "India (+91)", flag: "🇮🇳" },
-  { code: "+971", label: "UAE (+971)", flag: "🇦🇪" },
-  { code: "+1", label: "USA / Canada (+1)", flag: "🇺🇸" },
-  { code: "+44", label: "UK (+44)", flag: "🇬🇧" },
-  { code: "+65", label: "Singapore (+65)", flag: "🇸🇬" },
-  { code: "+60", label: "Malaysia (+60)", flag: "🇲🇾" },
-];
 
 export default function CrewOnboardingPage() {
   const router = useRouter();
   const { t, locale } = useLanguage();
+  const { refreshUser, updateUserRole } = useAuth();
   const isMl = locale === "ml";
 
-  // Flow steps: 1: Intro -> 2: Phone -> 3: OTP -> 4: Roles -> 5: City -> 6: Name & Consent -> 7: Success
+  // 5-step flow:
+  // 1: Phone -> 2: OTP -> 3: Roles -> 4: City -> 5: Name -> 6: Live (Success)
   const [step, setStep] = useState(1);
   const [countryCode, setCountryCode] = useState("+91");
   const [phone, setPhone] = useState("");
@@ -71,9 +60,8 @@ export default function CrewOnboardingPage() {
   const [resendTimer, setResendTimer] = useState(0);
   const [selectedRoles, setSelectedRoles] = useState([]);
   const [selectedSpecialisations, setSelectedSpecialisations] = useState([]);
-  const [selectedCity, setSelectedCity] = useState("kochi");
+  const [selectedCity, setSelectedCity] = useState("Kochi");
   const [name, setName] = useState("");
-  const [consentAgreed, setConsentAgreed] = useState(true);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -96,26 +84,44 @@ export default function CrewOnboardingPage() {
 
   const fullPhone = `${countryCode}${phone.replace(/\D/g, "")}`;
 
-  // Step 2 -> Step 3: Send OTP
+  // Step 1 -> Step 2: Send OTP
   const handleSendOtp = async (e) => {
     e?.preventDefault();
     setError("");
     const digits = phone.replace(/\D/g, "");
-    if (digits.length < 7) {
-      setError(isMl ? "സാധുവായ ഫോൺ നമ്പർ നൽകുക." : "Please enter a valid phone number.");
+
+    if (!digits) {
+      const msg = isMl ? "സാധുവായ ഫോൺ നമ്പർ നൽകുക." : "Please enter a valid phone number.";
+      setError(msg);
+      toast.error(msg);
       return;
     }
-    if (!isValidPhone(fullPhone)) {
-      setError(isMl ? "ഫോൺ നമ്പർ ഫോർമാറ്റ് ശരിയല്ല." : "Invalid phone format. Please check digits.");
-      return;
+
+    if (countryCode === "+91") {
+      if (digits.length !== 10 || !/^[6-9]\d{9}$/.test(digits)) {
+        const msg = isMl
+          ? "സാധുവായ 10 അക്ക ഇന്ത്യൻ മൊബൈൽ നമ്പർ നൽകുക (6-9 ൽ തുടങ്ങുന്നത്)."
+          : "Please provide a valid 10-digit Indian mobile number";
+        setError(msg);
+        toast.error(msg);
+        return;
+      }
+    } else {
+      if (digits.length < 7 || !isValidPhone(fullPhone)) {
+        const msg = isMl ? "ഫോൺ നമ്പർ ഫോർമാറ്റ് ശരിയല്ല." : "Invalid phone format. Please check digits.";
+        setError(msg);
+        toast.error(msg);
+        return;
+      }
     }
 
     setLoading(true);
     try {
       const res = await sendOtp(fullPhone);
       if (res.success) {
+        setError("");
         toast.success(isMl ? "പരിശോധനാ കോഡ് അയച്ചു." : "Verification code sent via SMS.");
-        setStep(3);
+        setStep(2);
         setResendTimer(30);
         setTimeout(() => otpInputRefs.current[0]?.focus(), 150);
       } else {
@@ -188,12 +194,14 @@ export default function CrewOnboardingPage() {
     }
   };
 
-  // Step 3 -> Step 4: Verify OTP
+  // Step 2 -> Step 3: Verify OTP
   const handleVerifyOtp = async (e) => {
     e?.preventDefault();
     const code = otp.join("");
     if (code.length < 6) {
-      setError(isMl ? "6 അക്ക OTP പൂർണ്ണമായി നൽകുക." : "Please enter the complete 6-digit OTP.");
+      const msg = isMl ? "6 അക്ക OTP പൂർണ്ണമായി നൽകുക." : "Please enter the complete 6-digit OTP.";
+      setError(msg);
+      toast.error(msg);
       return;
     }
 
@@ -213,11 +221,10 @@ export default function CrewOnboardingPage() {
 
       // Check if user already had a registered crew profile
       try {
-        const checkRes = await fetch(`/api/crew/profile?phone=${encodeURIComponent(fullPhone)}`);
+        const checkRes = await apiFetch(`/api/crew/profile?phone=${encodeURIComponent(fullPhone)}`);
         if (checkRes.ok) {
           const checkJson = await checkRes.json();
           if (checkJson.data?.name) {
-            // Already has profile! Preload and take to step 4 or dashboard
             setName(checkJson.data.name || "");
             if (checkJson.data.roles?.length) setSelectedRoles(checkJson.data.roles);
             if (checkJson.data.city) setSelectedCity(checkJson.data.city);
@@ -225,7 +232,8 @@ export default function CrewOnboardingPage() {
         }
       } catch (_) {}
 
-      setStep(4);
+      // Proceed directly to Role Selection (Step 3)
+      setStep(3);
     } catch (err) {
       setError(err.message || "Verification failed.");
     } finally {
@@ -247,22 +255,15 @@ export default function CrewOnboardingPage() {
     );
   };
 
-  // Step 6: Final Submission (under 30s)
+  // Step 6 -> Step 7: Final Submission
   const handleCompleteRegistration = async (e) => {
     e?.preventDefault();
     setError("");
 
     if (!name.trim()) {
-      setError(isMl ? "നിങ്ങളുടെ പേര് നൽകുക." : "Please enter your name.");
-      return;
-    }
-
-    if (!consentAgreed) {
-      setError(
-        isMl
-          ? "സേവന വ്യവസ്ഥകളും നിബന്ധനകളും അംഗീകരിക്കേണ്ടതുണ്ട്."
-          : "You must agree to the Terms, Privacy Policy, and Community Conduct."
-      );
+      const msg = isMl ? "നിങ്ങളുടെ പേര് നൽകുക." : "Please enter your name.";
+      setError(msg);
+      toast.error(msg);
       return;
     }
 
@@ -287,7 +288,7 @@ export default function CrewOnboardingPage() {
         },
       };
 
-      const res = await fetch("/api/crew/onboarding", {
+      const res = await apiFetch("/api/crew/onboarding", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -304,10 +305,29 @@ export default function CrewOnboardingPage() {
           : "Crew profile created successfully! Welcome to CrewHive."
       );
       setCreatedCrewId(data.crewId);
-      setStep(7); // Success!
+      if (updateUserRole) updateUserRole("crew", false);
+      if (typeof window !== "undefined") {
+        try {
+          sessionStorage.setItem("crewhive_user_role", "crew");
+          sessionStorage.setItem("crewhive_user_phone", fullPhone);
+          sessionStorage.setItem(
+            "crewhive_cached_crew_profile",
+            JSON.stringify({
+              id: data.crewId || fullPhone.replace(/\D/g, ""),
+              phone: fullPhone,
+              name: name.trim(),
+              role: selectedRoles[0] || "general_crew",
+              roles: selectedRoles,
+              specialisations: selectedSpecialisations,
+              city: cityName,
+            })
+          );
+        } catch (_) {}
+      }
+
+      setStep(6);
     } catch (err) {
-      console.error("[onboarding] Submit error:", err);
-      const msg = err.message || "Failed to create crew profile. Please try again.";
+      const msg = err.message || "Failed to complete onboarding.";
       setError(msg);
       toast.error(msg);
     } finally {
@@ -315,28 +335,30 @@ export default function CrewOnboardingPage() {
     }
   };
 
-  const isLocalDev =
-    typeof window !== "undefined" &&
-    (window.location.hostname === "localhost" ||
-      window.location.hostname === "127.0.0.1");
-
   return (
-    <div className="min-h-screen bg-background text-foreground flex flex-col justify-between selection:bg-primary selection:text-black">
-      {/* Top Navbar */}
-      <header className="border-b border-border/50 bg-card/60 backdrop-blur-md sticky top-0 z-40">
-        <div className="max-w-4xl mx-auto px-4 h-16 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-primary flex items-center justify-center font-bold text-black text-sm shadow-md shadow-primary/30">
+    <div className="min-h-screen bg-background text-foreground flex flex-col justify-between">
+      {/* Top Navigation Bar */}
+      <header className="border-b border-border/60 bg-card/60 backdrop-blur-md sticky top-0 z-30 py-2.5 px-4 sm:px-6">
+        <div className="max-w-5xl mx-auto flex items-center justify-between">
+          <Link href="/" className="flex items-center gap-2.5 group">
+            <div className="w-8 h-8 rounded-lg bg-primary text-zinc-950 flex items-center justify-center font-black text-sm shadow-xs group-hover:scale-105 transition-transform">
               CH
             </div>
-            <span className="font-bold text-lg tracking-tight">CrewHive</span>
+            <div className="flex flex-col">
+              <span className="font-extrabold text-base tracking-tight leading-none text-foreground">
+                CrewHive
+              </span>
+              <span className="text-[10px] text-muted-foreground uppercase tracking-widest font-semibold mt-0.5">
+                Crew Network
+              </span>
+            </div>
           </Link>
 
           <div className="flex items-center gap-3">
             <LanguageToggle />
             <Link
               href="/login"
-              className="text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors"
+              className="text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors px-2.5 py-1.5 rounded-lg hover:bg-muted"
             >
               {isMl ? "സൈൻ ഇൻ" : "Sign In"}
             </Link>
@@ -345,175 +367,124 @@ export default function CrewOnboardingPage() {
       </header>
 
       {/* Main Content Area */}
-      <main className="flex-1 max-w-2xl w-full mx-auto px-4 py-8 md:py-12 flex flex-col justify-center">
-        {/* Progress Bar (Visible for steps 2 to 6) */}
-        {step >= 2 && step <= 6 && (
-          <div className="mb-8">
-            <div className="flex items-center justify-between text-xs font-semibold text-muted-foreground mb-2">
-              <span>{isMl ? `ഘട്ടം ${step - 1} / 5` : `Step ${step - 1} of 5`}</span>
-              <span className="text-primary font-bold">
-                {Math.round(((step - 1) / 5) * 100)}%
+      <main className="flex-1 w-full mx-auto px-4 py-2 sm:py-3.5 flex flex-col justify-center max-w-xl">
+        {/* Modern Segmented Progress Tracker (Steps 1 to 5) */}
+        {step >= 1 && step <= 5 && (
+          <div className="mb-3 space-y-1.5">
+            <div className="flex items-center justify-between text-xs">
+              <span className="font-bold tracking-wide uppercase text-muted-foreground flex items-center gap-2">
+                <span className="w-5 h-5 rounded-full bg-primary/10 border border-primary/30 text-primary font-black text-[11px] inline-flex items-center justify-center">
+                  {step}
+                </span>
+                <span className="text-foreground font-semibold">
+                  {step === 1 && (isMl ? "ഫോൺ പരിശോധന" : "Phone Number")}
+                  {step === 2 && (isMl ? "OTP സ്ഥിരീകരണം" : "Verify Code")}
+                  {step === 3 && (isMl ? "പ്രൊഫഷണൽ റോളുകൾ" : "Role Selection")}
+                  {step === 4 && (isMl ? "നഗരം / ജില്ല" : "Base Location")}
+                  {step === 5 && (isMl ? "പ്രൊഫൈൽ വിവരങ്ങൾ" : "Full Name & Go Live")}
+                </span>
+              </span>
+              <span className="text-xs font-mono font-bold text-primary bg-primary/10 px-2.5 py-0.5 rounded-full border border-primary/20">
+                {isMl ? `ഘട്ടം ${step}/5` : `Step ${step} of 5`}
               </span>
             </div>
-            <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden">
-              <div
-                className="h-full bg-primary transition-all duration-300 rounded-full"
-                style={{ width: `${((step - 1) / 5) * 100}%` }}
-              />
+
+            {/* 5 Segmented Bars */}
+            <div className="grid grid-cols-5 gap-1.5">
+              {[1, 2, 3, 4, 5].map((s) => (
+                <div
+                  key={s}
+                  className={`h-1.5 rounded-full transition-all duration-300 ${
+                    s < step
+                      ? "bg-primary"
+                      : s === step
+                      ? "bg-primary shadow-xs shadow-primary/60"
+                      : "bg-zinc-800"
+                  }`}
+                />
+              ))}
             </div>
           </div>
         )}
 
-        {/* Global Error Notice */}
-        {error && (
-          <div className="mb-6 p-3.5 bg-red-950/80 border border-red-800 text-red-200 rounded-xl text-sm flex items-start gap-2.5 animate-in fade-in">
-            <AlertTriangle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
-            <span className="flex-1">{error}</span>
-          </div>
-        )}
-
-        {/* ─── SCREEN 1: CREATE FREE PROFILE (INTRO) ─── */}
+        {/* ─── SCREEN 1: PHONE NUMBER ─── */}
         {step === 1 && (
-          <div className="space-y-6 text-center">
-            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-semibold">
-              <Zap className="w-3.5 h-3.5" />
-              <span>{t("onboarding.badge", "Crew Onboarding")} · 30 Seconds</span>
-            </div>
+          <div className="bg-card/95 border border-border/80 rounded-2xl p-4 sm:p-5 shadow-2xl relative overflow-hidden backdrop-blur-sm space-y-4">
+            <div className="absolute top-0 inset-x-0 h-[2px] bg-gradient-to-r from-transparent via-primary/60 to-transparent" />
 
-            <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight">
-              {t("onboarding.title", "Create your free crew profile in 30 seconds")}
-            </h1>
-
-            <p className="text-muted-foreground text-sm sm:text-base leading-relaxed max-w-lg mx-auto">
-              {t(
-                "onboarding.subtitle",
-                "Join Kerala's dedicated AV & event technician network. Get discovered by event organizers and production houses."
-              )}
-            </p>
-
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 pt-4 text-left">
-              <div className="p-4 rounded-xl bg-card border border-border">
-                <CheckCircle2 className="w-5 h-5 text-green-500 mb-2" />
-                <h4 className="font-semibold text-sm">
-                  {isMl ? "നേരിട്ടുള്ള ബുക്കിംഗ്" : "Direct Bookings"}
-                </h4>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {isMl
-                    ? "ഇടനിലക്കാരില്ലാതെ ഓർഗനൈസർമാരിൽ നിന്ന് നേരിട്ട് വർക്ക് ഓഫറുകൾ."
-                    : "No commissions or middlemen. Deal directly with recruiters."}
-                </p>
-              </div>
-
-              <div className="p-4 rounded-xl bg-card border border-border">
-                <MapPin className="w-5 h-5 text-primary mb-2" />
-                <h4 className="font-semibold text-sm">
-                  {isMl ? "സ്വന്തം പ്രദേശത്ത്" : "Kerala-Wide Reach"}
-                </h4>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {isMl
-                    ? "കൊച്ചി, തിരുവനന്തപുരം, കോഴിക്കോട് ഉൾപ്പെടെയുള്ള ജില്ലകളിൽ."
-                    : "Connect with events across Kochi, Trivandrum, and all districts."}
-                </p>
-              </div>
-
-              <div className="p-4 rounded-xl bg-card border border-border">
-                <ShieldCheck className="w-5 h-5 text-blue-400 mb-2" />
-                <h4 className="font-semibold text-sm">
-                  {isMl ? "സുരക്ഷിത സ്വകാര്യത" : "Privacy First"}
-                </h4>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {isMl
-                    ? "ലൊക്കേഷൻ പൂർണ്ണ സുരക്ഷിതം. ആവശ്യമുള്ളപ്പോൾ മാത്രം ലഭ്യത ഓൺ ചെയ്യാം."
-                    : "Strict coarse location privacy. You control when you are visible."}
-                </p>
-              </div>
-            </div>
-
-            <div className="pt-6">
-              <button
-                onClick={() => setStep(2)}
-                className="w-full sm:w-auto min-w-64 inline-flex items-center justify-center gap-2 px-8 py-3.5 rounded-xl bg-primary text-black font-bold text-sm hover:bg-primary/90 transition-all shadow-lg shadow-primary/20 cursor-pointer"
-              >
-                <span>{t("onboarding.startCta", "Create Free Profile")}</span>
-                <ArrowRight className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* ─── SCREEN 2: PHONE NUMBER ─── */}
-        {step === 2 && (
-          <div className="bg-card border border-border rounded-2xl p-6 sm:p-8 shadow-xl">
-            <div className="flex items-center gap-3 mb-6">
-              <button
-                onClick={() => setStep(1)}
-                className="p-1.5 rounded-lg border border-border text-muted-foreground hover:text-foreground transition-colors"
-                aria-label="Back"
+            <div className="flex items-start gap-3 pb-2 border-b border-border/40">
+              <Link
+                href="/"
+                className="w-8 h-8 rounded-lg border border-border/80 bg-zinc-900/60 hover:bg-muted text-muted-foreground hover:text-foreground flex items-center justify-center transition-all cursor-pointer shrink-0 mt-0.5 shadow-2xs"
+                aria-label="Home"
               >
                 <ArrowLeft className="w-4 h-4" />
-              </button>
-              <div>
-                <h2 className="text-xl font-bold">
+              </Link>
+              <div className="space-y-0.5 min-w-0 flex-1">
+                <h2 className="text-base sm:text-lg font-extrabold tracking-tight text-foreground">
                   {t("onboarding.step1Title", "Step 1: Phone Number")}
                 </h2>
-                <p className="text-xs text-muted-foreground mt-0.5">
+                <p className="text-xs text-muted-foreground leading-relaxed">
                   {t("onboarding.step1Desc", "We'll send an OTP to verify your WhatsApp/mobile number.")}
                 </p>
               </div>
             </div>
 
-            <form onSubmit={handleSendOtp} className="space-y-5">
+            <form onSubmit={handleSendOtp} className="space-y-3.5">
               <div>
-                <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
-                  {t("onboarding.phoneLabel", "Mobile / WhatsApp Number")}
+                <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">
+                  {isMl ? "കൺട്രി കോഡ്" : "Country Code"}
                 </label>
-                <div className="flex items-center gap-2">
-                  <select
-                    value={countryCode}
-                    onChange={(e) => setCountryCode(e.target.value)}
-                    className="bg-muted border border-border text-foreground rounded-xl px-3 py-3 text-sm font-medium outline-none focus:border-primary shrink-0"
-                  >
-                    {COUNTRY_CODES.map((c) => (
-                      <option key={c.code} value={c.code}>
-                        {c.flag} {c.code}
-                      </option>
-                    ))}
-                  </select>
-
-                  <div className="relative flex-1">
-                    <Phone className="w-4 h-4 text-muted-foreground absolute left-3.5 top-1/2 -translate-y-1/2" />
-                    <input
-                      type="tel"
-                      value={phone}
-                      onChange={(e) => {
-                        setPhone(e.target.value.replace(/\D/g, "").slice(0, 10));
-                        setError("");
-                      }}
-                      placeholder={t("onboarding.phonePlaceholder", "9876543210")}
-                      autoFocus
-                      className="w-full bg-muted border border-border text-foreground rounded-xl pl-10 pr-4 py-3 text-sm font-semibold outline-none focus:border-primary placeholder:text-muted-foreground/60 tracking-wider"
-                    />
-                  </div>
-                </div>
+                <CountryCodeSelect
+                  value={countryCode}
+                  onChange={(code) => setCountryCode(code)}
+                />
               </div>
 
-              {isLocalDev && (
-                <p className="text-xs text-amber-400 bg-amber-500/10 border border-amber-500/20 p-2.5 rounded-lg">
-                  {t("onboarding.devHint", "Dev mode: Use code 123456")}
+              <div>
+                <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">
+                  {t("onboarding.phoneLabel", "Mobile / WhatsApp Number")}
+                </label>
+                <div className="relative">
+                  <Phone className="w-4 h-4 text-muted-foreground absolute left-3.5 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="tel"
+                    value={phone}
+                    onChange={(e) => {
+                      setPhone(e.target.value.replace(/\D/g, "").slice(0, 10));
+                      setError("");
+                    }}
+                    placeholder={t("onboarding.phonePlaceholder", "9876543210")}
+                    autoFocus
+                    className="w-full bg-muted border border-border text-foreground rounded-xl pl-10 pr-4 py-2.5 text-sm font-semibold outline-none focus:border-primary placeholder:text-muted-foreground/60 tracking-wider transition-colors"
+                  />
+                </div>
+                <p className="text-[11px] text-muted-foreground mt-1.5 flex items-center gap-1.5">
+                  <Zap className="w-3.5 h-3.5 text-primary shrink-0" />
+                  <span>
+                    {isMl
+                      ? "പാസ്‌വേഡ് ആവശ്യമില്ല. WhatsApp അല്ലെങ്കിൽ SMS OTP വഴി നേരിട്ട് സൈൻ ഇൻ ചെയ്യാം."
+                      : "Password-free sign in via WhatsApp or SMS OTP. Zero spam guaranteed."}
+                  </span>
                 </p>
-              )}
+              </div>
 
               <button
                 type="submit"
-                disabled={loading || phone.replace(/\D/g, "").length < 7}
-                className="w-full py-3.5 px-4 bg-primary text-black font-bold rounded-xl text-sm hover:bg-primary/90 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-md shadow-primary/20 cursor-pointer"
+                disabled={
+                  loading ||
+                  (countryCode === "+91"
+                    ? phone.replace(/\D/g, "").length !== 10
+                    : phone.replace(/\D/g, "").length < 7)
+                }
+                className="w-full h-11 bg-primary hover:bg-primary/90 active:scale-[0.99] text-zinc-950 font-extrabold text-sm rounded-xl shadow-lg shadow-primary/20 hover:shadow-primary/30 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed disabled:shadow-none"
               >
                 {loading ? (
                   <div className="w-5 h-5 border-2 border-black border-t-transparent rounded-full animate-spin" />
                 ) : (
                   <>
                     <span>{t("onboarding.sendOtp", "Send Verification Code")}</span>
-                    <ArrowRight className="w-4 h-4" />
+                    <ArrowRight className="w-4 h-4 stroke-[2.5]" />
                   </>
                 )}
               </button>
@@ -521,32 +492,43 @@ export default function CrewOnboardingPage() {
           </div>
         )}
 
-        {/* ─── SCREEN 3: OTP VERIFICATION ─── */}
-        {step === 3 && (
-          <div className="bg-card border border-border rounded-2xl p-6 sm:p-8 shadow-xl">
-            <div className="flex items-center gap-3 mb-6">
+        {/* ─── SCREEN 2: OTP VERIFICATION ─── */}
+        {step === 2 && (
+          <div className="bg-card/95 border border-border/80 rounded-2xl p-4 sm:p-5 shadow-2xl relative overflow-hidden backdrop-blur-sm space-y-4">
+            <div className="absolute top-0 inset-x-0 h-[2px] bg-gradient-to-r from-transparent via-primary/60 to-transparent" />
+
+            <div className="flex items-start gap-3 pb-2 border-b border-border/40">
               <button
-                onClick={() => setStep(2)}
-                className="p-1.5 rounded-lg border border-border text-muted-foreground hover:text-foreground transition-colors"
+                type="button"
+                onClick={() => setStep(1)}
+                className="w-8 h-8 rounded-lg border border-border/80 bg-zinc-900/60 hover:bg-muted text-muted-foreground hover:text-foreground flex items-center justify-center transition-all cursor-pointer shrink-0 mt-0.5 shadow-2xs"
                 aria-label="Back"
               >
                 <ArrowLeft className="w-4 h-4" />
               </button>
-              <div>
-                <h2 className="text-xl font-bold">
+              <div className="space-y-0.5 min-w-0 flex-1">
+                <h2 className="text-base sm:text-lg font-extrabold tracking-tight text-foreground">
                   {t("onboarding.step2Title", "Step 2: Enter Verification Code")}
                 </h2>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  {t("onboarding.step2Desc", "Enter the 6-digit code sent to")}{" "}
-                  <span className="font-semibold text-foreground">{fullPhone}</span>
+                <p className="text-xs text-muted-foreground leading-relaxed flex flex-wrap items-center gap-1.5">
+                  <span>{t("onboarding.step2Desc", "Enter the 6-digit code sent to")}</span>
+                  <span className="font-bold text-foreground bg-muted/80 px-2 py-0.5 rounded-md border border-border/50">
+                    {fullPhone}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setStep(1)}
+                    className="text-primary hover:underline font-semibold text-xs ml-1"
+                  >
+                    {isMl ? "മാറ്റുക" : "Edit"}
+                  </button>
                 </p>
               </div>
             </div>
 
-            <form onSubmit={handleVerifyOtp} className="space-y-6">
-              {/* 6 Digit Input Boxes */}
+            <form onSubmit={handleVerifyOtp} className="space-y-4">
               <div
-                className="flex items-center justify-between gap-2 sm:gap-3"
+                className="grid grid-cols-6 gap-2 sm:gap-2.5 max-w-sm mx-auto"
                 onPaste={handleOtpPaste}
               >
                 {otp.map((digit, idx) => (
@@ -559,16 +541,15 @@ export default function CrewOnboardingPage() {
                     value={digit}
                     onChange={(e) => handleOtpDigitChange(idx, e.target.value)}
                     onKeyDown={(e) => handleOtpKeyDown(idx, e)}
-                    className="w-12 h-14 sm:w-14 sm:h-16 text-center text-xl sm:text-2xl font-bold bg-muted border border-border rounded-xl text-foreground focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
+                    className="w-full h-11 sm:h-12 text-center text-lg sm:text-xl font-black bg-muted/70 border border-border rounded-xl text-foreground focus:border-primary focus:ring-2 focus:ring-primary/30 outline-none transition-all shadow-inner"
                   />
                 ))}
               </div>
 
-              {/* Resend Timer & Action */}
-              <div className="flex items-center justify-between text-xs text-muted-foreground pt-1">
+              <div className="flex items-center justify-between text-xs text-muted-foreground pt-0.5">
                 <span>
                   {resendTimer > 0 ? (
-                    <span className="inline-flex items-center gap-1.5">
+                    <span className="inline-flex items-center gap-1.5 text-amber-400 font-medium">
                       <Clock className="w-3.5 h-3.5" />
                       {t("onboarding.resendIn", "Resend in")} {resendTimer}s
                     </span>
@@ -581,7 +562,7 @@ export default function CrewOnboardingPage() {
                   type="button"
                   onClick={handleResendOtp}
                   disabled={resendTimer > 0 || loading}
-                  className="font-semibold text-primary hover:underline disabled:opacity-40 disabled:no-underline cursor-pointer"
+                  className="font-bold text-primary hover:underline disabled:opacity-40 disabled:no-underline cursor-pointer"
                 >
                   {t("onboarding.resendOtp", "Resend Code")}
                 </button>
@@ -590,14 +571,14 @@ export default function CrewOnboardingPage() {
               <button
                 type="submit"
                 disabled={loading || otp.join("").length < 6}
-                className="w-full py-3.5 px-4 bg-primary text-black font-bold rounded-xl text-sm hover:bg-primary/90 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-md shadow-primary/20 cursor-pointer"
+                className="w-full h-11 bg-primary hover:bg-primary/90 active:scale-[0.99] text-zinc-950 font-extrabold text-sm rounded-xl shadow-lg shadow-primary/20 hover:shadow-primary/30 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed disabled:shadow-none"
               >
                 {loading ? (
                   <div className="w-5 h-5 border-2 border-black border-t-transparent rounded-full animate-spin" />
                 ) : (
                   <>
                     <span>{t("onboarding.verifyOtp", "Verify & Continue")}</span>
-                    <ArrowRight className="w-4 h-4" />
+                    <ArrowRight className="w-4 h-4 stroke-[2.5]" />
                   </>
                 )}
               </button>
@@ -605,29 +586,32 @@ export default function CrewOnboardingPage() {
           </div>
         )}
 
-        {/* ─── SCREEN 4: PROFESSIONAL ROLE SELECTION ─── */}
-        {step === 4 && (
-          <div className="bg-card border border-border rounded-2xl p-6 sm:p-8 shadow-xl">
-            <div className="flex items-center gap-3 mb-6">
+        {/* ─── SCREEN 3: PROFESSIONAL ROLE SELECTION ─── */}
+        {step === 3 && (
+          <div className="bg-card/95 border border-border/80 rounded-2xl p-3.5 sm:p-4.5 shadow-2xl relative overflow-hidden backdrop-blur-sm space-y-3">
+            <div className="absolute top-0 inset-x-0 h-[2px] bg-gradient-to-r from-transparent via-primary/60 to-transparent" />
+
+            <div className="flex items-start gap-3 pb-2 border-b border-border/40">
               <button
-                onClick={() => setStep(3)}
-                className="p-1.5 rounded-lg border border-border text-muted-foreground hover:text-foreground transition-colors"
+                type="button"
+                onClick={() => setStep(2)}
+                className="w-8 h-8 rounded-lg border border-border/80 bg-zinc-900/60 hover:bg-muted text-muted-foreground hover:text-foreground flex items-center justify-center transition-all cursor-pointer shrink-0 mt-0.5 shadow-2xs"
                 aria-label="Back"
               >
                 <ArrowLeft className="w-4 h-4" />
               </button>
-              <div>
-                <h2 className="text-xl font-bold">
+              <div className="space-y-0.5 min-w-0 flex-1">
+                <h2 className="text-base sm:text-lg font-extrabold tracking-tight text-foreground">
                   {t("onboarding.step3Title", "Step 3: Select Your Roles")}
                 </h2>
-                <p className="text-xs text-muted-foreground mt-0.5">
+                <p className="text-xs text-muted-foreground leading-relaxed">
                   {t("onboarding.step3Desc", "Choose all categories you work in. Select specialisations below each role.")}
                 </p>
               </div>
             </div>
 
             {/* Parent Roles Grid */}
-            <div className="grid grid-cols-2 sm:grid-cols-2 gap-3 max-h-96 overflow-y-auto pr-1">
+            <div className="grid grid-cols-2 gap-2">
               {PARENT_ROLES.map((role) => {
                 const IconComponent = ICON_MAP[role.icon] || Lightbulb;
                 const isSelected = selectedRoles.includes(role.id);
@@ -635,56 +619,58 @@ export default function CrewOnboardingPage() {
                 return (
                   <div
                     key={role.id}
-                    className={`rounded-xl border p-3.5 transition-all text-left flex flex-col justify-between cursor-pointer ${
+                    className={`rounded-xl border p-2 sm:p-2.5 transition-all text-left flex items-center justify-between gap-2 cursor-pointer select-none ${
                       isSelected
-                        ? "bg-primary/10 border-primary shadow-sm"
-                        : "bg-muted/50 border-border hover:border-zinc-600"
+                        ? "bg-primary/10 border-primary ring-1 ring-primary/40 shadow-xs"
+                        : "bg-muted/40 border-border hover:border-zinc-600 hover:bg-muted/60"
                     }`}
                     onClick={() => toggleParentRole(role.id)}
                   >
-                    <div className="flex items-start justify-between mb-2">
+                    <div className="flex items-center gap-2 min-w-0 flex-1">
                       <div
-                        className={`w-9 h-9 rounded-lg flex items-center justify-center ${
-                          isSelected ? "bg-primary text-black" : "bg-card text-muted-foreground"
+                        className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition-colors ${
+                          isSelected ? "bg-primary text-black font-semibold" : "bg-card border border-border/80 text-muted-foreground"
                         }`}
                       >
-                        <IconComponent className="w-5 h-5" />
+                        <IconComponent className="w-3.5 h-3.5" />
                       </div>
-                      <div
-                        className={`w-5 h-5 rounded-md border flex items-center justify-center transition-all ${
-                          isSelected ? "bg-primary border-primary text-black" : "border-border"
-                        }`}
-                      >
-                        {isSelected && <Check className="w-3.5 h-3.5 stroke-[3]" />}
-                      </div>
-                    </div>
-
-                    <div>
-                      <h4 className="font-bold text-sm text-foreground">
+                      <h4 className="font-semibold text-xs text-foreground leading-tight truncate">
                         {isMl ? role.nameMl : role.nameEn}
                       </h4>
-                      <p className="text-[11px] text-muted-foreground">
-                        {isMl ? role.nameEn : role.nameMl}
-                      </p>
+                    </div>
+
+                    <div
+                      className={`w-3.5 h-3.5 rounded border flex items-center justify-center transition-all shrink-0 ${
+                        isSelected ? "bg-primary border-primary text-black" : "border-border/80 bg-card/40"
+                      }`}
+                    >
+                      {isSelected && <Check className="w-2.5 h-2.5 stroke-[3]" />}
                     </div>
                   </div>
                 );
               })}
             </div>
 
-            {/* Specialisations for selected roles */}
+            {/* Specialisations */}
             {selectedRoles.length > 0 && (
-              <div className="mt-6 pt-5 border-t border-border">
-                <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
-                  {isMl ? "സ്പെഷ്യലൈസേഷനുകൾ (ആവശ്യമെങ്കിൽ തിരഞ്ഞെടുക്കുക):" : "Specialisations (Optional):"}
-                </h4>
-                <div className="space-y-3">
+              <div className="pt-2 border-t border-border/50">
+                <div className="flex items-center justify-between mb-1.5">
+                  <h4 className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+                    {isMl ? "സ്പെഷ്യലൈസേഷനുകൾ (ഓപ്ഷണൽ)" : "Specialisations (Optional)"}
+                  </h4>
+                  {selectedSpecialisations.length > 0 && (
+                    <span className="text-[10px] text-primary font-bold bg-primary/10 px-2 py-0.5 rounded-full border border-primary/20">
+                      {selectedSpecialisations.length} {isMl ? "തിരഞ്ഞെടുത്തു" : "selected"}
+                    </span>
+                  )}
+                </div>
+                <div className="space-y-1.5 max-h-24 overflow-y-auto custom-scrollbar pr-1">
                   {PARENT_ROLES.filter((r) => selectedRoles.includes(r.id)).map((parent) => (
-                    <div key={parent.id} className="space-y-1.5">
-                      <span className="text-xs font-medium text-foreground">
+                    <div key={parent.id} className="p-2 bg-muted/30 border border-border/50 rounded-lg space-y-1">
+                      <span className="text-[11px] font-semibold text-foreground/90 block">
                         {isMl ? parent.nameMl : parent.nameEn}
                       </span>
-                      <div className="flex flex-wrap gap-1.5">
+                      <div className="flex flex-wrap gap-1">
                         {parent.specialisations.map((spec) => {
                           const isSpecSelected = selectedSpecialisations.includes(spec.id);
                           return (
@@ -692,10 +678,10 @@ export default function CrewOnboardingPage() {
                               key={spec.id}
                               type="button"
                               onClick={() => toggleSpecialisation(spec.id)}
-                              className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all ${
+                              className={`px-2 py-1 rounded-md text-[11px] font-medium transition-all cursor-pointer ${
                                 isSpecSelected
-                                  ? "bg-primary text-black"
-                                  : "bg-muted text-muted-foreground hover:text-foreground border border-border"
+                                  ? "bg-primary text-black font-semibold shadow-xs"
+                                  : "bg-card text-muted-foreground hover:text-foreground border border-border hover:border-zinc-500"
                               }`}
                             >
                               {isMl ? spec.nameMl : spec.nameEn}
@@ -712,137 +698,182 @@ export default function CrewOnboardingPage() {
             <button
               onClick={() => {
                 if (selectedRoles.length === 0) {
-                  setError(isMl ? "കുറഞ്ഞത് ഒരു വിഭാഗമെങ്കിലും തിരഞ്ഞെടുക്കുക." : "Please select at least one role.");
+                  const msg = isMl ? "കുറഞ്ഞത് ഒരു വിഭാഗമെങ്കിലും തിരഞ്ഞെടുക്കുക." : "Please select at least one role.";
+                  setError(msg);
+                  toast.error(msg);
                   return;
                 }
-                setStep(5);
+                setStep(4);
               }}
               disabled={selectedRoles.length === 0}
-              className="mt-6 w-full py-3.5 px-4 bg-primary text-black font-bold rounded-xl text-sm hover:bg-primary/90 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-md shadow-primary/20 cursor-pointer"
+              className="w-full h-10 sm:h-11 bg-primary hover:bg-primary/90 active:scale-[0.99] text-zinc-950 font-extrabold text-sm rounded-xl shadow-lg shadow-primary/20 hover:shadow-primary/30 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed disabled:shadow-none"
             >
-              <span>{isMl ? "അടുത്തത്: നഗരം തിരഞ്ഞെടുക്കുക" : "Next: Select City"}</span>
-              <ArrowRight className="w-4 h-4" />
+              <span>{isMl ? "നഗരം തിരഞ്ഞെടുക്കുക" : "Select City"}</span>
+              <ArrowRight className="w-4 h-4 stroke-[2.5]" />
             </button>
           </div>
         )}
 
-        {/* ─── SCREEN 5: CITY SELECTION ─── */}
-        {step === 5 && (
-          <div className="bg-card border border-border rounded-2xl p-6 sm:p-8 shadow-xl">
-            <div className="flex items-center gap-3 mb-6">
+        {/* ─── SCREEN 4: CITY SELECTION ─── */}
+        {step === 4 && (
+          <div className="bg-card/95 border border-border/80 rounded-2xl p-3.5 sm:p-4.5 shadow-2xl relative overflow-hidden backdrop-blur-sm space-y-3">
+            <div className="absolute top-0 inset-x-0 h-[2px] bg-gradient-to-r from-transparent via-primary/60 to-transparent" />
+
+            <div className="flex items-start gap-3 pb-2 border-b border-border/40">
               <button
-                onClick={() => setStep(4)}
-                className="p-1.5 rounded-lg border border-border text-muted-foreground hover:text-foreground transition-colors"
+                type="button"
+                onClick={() => setStep(3)}
+                className="w-8 h-8 rounded-lg border border-border/80 bg-zinc-900/60 hover:bg-muted text-muted-foreground hover:text-foreground flex items-center justify-center transition-all cursor-pointer shrink-0 mt-0.5 shadow-2xs"
                 aria-label="Back"
               >
                 <ArrowLeft className="w-4 h-4" />
               </button>
-              <div>
-                <h2 className="text-xl font-bold">
+              <div className="space-y-0.5 min-w-0 flex-1">
+                <h2 className="text-base sm:text-lg font-extrabold tracking-tight text-foreground">
                   {t("onboarding.step4Title", "Step 4: Select Your Base City")}
                 </h2>
-                <p className="text-xs text-muted-foreground mt-0.5">
+                <p className="text-xs text-muted-foreground leading-relaxed">
                   {t("onboarding.step4Desc", "Where are you primarily based for event work in Kerala?")}
                 </p>
               </div>
             </div>
 
             {/* Launch Cities */}
-            <div className="mb-6">
-              <label className="block text-xs font-semibold text-primary uppercase tracking-wider mb-2.5">
-                ★ {t("onboarding.launchCities", "Launch Hubs")}
+            <div>
+              <label className="flex items-center gap-1.5 text-[11px] font-semibold text-primary uppercase tracking-wider mb-1.5">
+                <MapPin className="w-3.5 h-3.5 text-primary" />
+                <span>{t("onboarding.launchCities", "Launch Hubs")}</span>
               </label>
-              <div className="grid grid-cols-3 gap-2.5">
-                {CITIES.filter((c) => c.isLaunchCity).map((city) => (
-                  <button
-                    key={city.id}
-                    type="button"
-                    onClick={() => {
-                      setSelectedCity(city.nameEn);
-                      setError("");
-                    }}
-                    className={`p-3.5 rounded-xl border text-center transition-all cursor-pointer ${
-                      selectedCity === city.nameEn
-                        ? "bg-primary text-black border-primary font-bold shadow-md shadow-primary/20"
-                        : "bg-muted border-border text-foreground hover:border-zinc-500 font-medium"
-                    }`}
-                  >
-                    <div className="text-sm">{isMl ? city.nameMl : city.nameEn}</div>
-                    <div className={`text-[11px] ${selectedCity === city.nameEn ? "text-black/70" : "text-muted-foreground"}`}>
-                      {isMl ? city.nameEn : city.nameMl}
-                    </div>
-                  </button>
-                ))}
+              <div className="grid grid-cols-3 gap-2">
+                {[
+                  CITIES.find((c) => c.id === "kochi"),
+                  CITIES.find((c) => c.id === "thiruvananthapuram"),
+                  CITIES.find((c) => c.id === "kozhikode"),
+                ]
+                  .filter(Boolean)
+                  .map((city) => {
+                    const isSelected = selectedCity === city.nameEn;
+                    return (
+                      <button
+                        key={city.id}
+                        type="button"
+                        onClick={() => {
+                          setSelectedCity(city.nameEn);
+                          setError("");
+                        }}
+                        className={`p-2 rounded-xl border text-center transition-all cursor-pointer flex flex-col items-center justify-center min-h-[44px] ${
+                          isSelected
+                            ? "bg-primary text-black border-primary font-bold shadow-md shadow-primary/20 scale-[1.02]"
+                            : "bg-muted/60 border-border text-foreground hover:border-zinc-500 font-medium"
+                        }`}
+                      >
+                        <span className="text-xs font-semibold truncate max-w-full">
+                          {isMl ? city.nameMl : city.nameEn}
+                        </span>
+                      </button>
+                    );
+                  })}
               </div>
             </div>
 
             {/* Other Districts */}
             <div>
-              <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2.5">
+              <label className="block text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">
                 {t("onboarding.otherDistricts", "All Kerala Districts")}
               </label>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-48 overflow-y-auto pr-1">
-                {CITIES.filter((c) => !c.isLaunchCity).map((city) => (
-                  <button
-                    key={city.id}
-                    type="button"
-                    onClick={() => {
-                      setSelectedCity(city.nameEn);
-                      setError("");
-                    }}
-                    className={`px-3 py-2 rounded-lg border text-left text-xs transition-all cursor-pointer ${
-                      selectedCity === city.nameEn
-                        ? "bg-primary text-black border-primary font-bold"
-                        : "bg-muted/70 border-border text-muted-foreground hover:text-foreground"
-                    }`}
-                  >
-                    {isMl ? city.nameMl : city.nameEn}
-                  </button>
-                ))}
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
+                {CITIES.filter((c) => !c.isLaunchCity).map((city) => {
+                  const isSelected = selectedCity === city.nameEn;
+                  return (
+                    <button
+                      key={city.id}
+                      type="button"
+                      onClick={() => {
+                        setSelectedCity(city.nameEn);
+                        setError("");
+                      }}
+                      className={`px-2.5 py-1.5 rounded-lg border text-center text-xs transition-all cursor-pointer font-medium truncate ${
+                        isSelected
+                          ? "bg-primary text-black border-primary font-bold shadow-xs scale-[1.02]"
+                          : "bg-muted/40 border-border text-muted-foreground hover:text-foreground hover:border-zinc-600"
+                      }`}
+                    >
+                      {isMl ? city.nameMl : city.nameEn}
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
             <button
               onClick={() => {
                 if (!selectedCity) {
-                  setError(isMl ? "ഒരു നഗരം തിരഞ്ഞെടുക്കുക." : "Please select your city.");
+                  const msg = isMl ? "ഒരു നഗരം തിരഞ്ഞെടുക്കുക." : "Please select your city.";
+                  setError(msg);
+                  toast.error(msg);
                   return;
                 }
-                setStep(6);
+                setStep(5);
               }}
-              className="mt-8 w-full py-3.5 px-4 bg-primary text-black font-bold rounded-xl text-sm hover:bg-primary/90 transition-all flex items-center justify-center gap-2 shadow-md shadow-primary/20 cursor-pointer"
+              className="w-full h-10 sm:h-11 bg-primary hover:bg-primary/90 active:scale-[0.99] text-zinc-950 font-extrabold text-sm rounded-xl shadow-lg shadow-primary/20 hover:shadow-primary/30 transition-all flex items-center justify-center gap-2 cursor-pointer"
             >
-              <span>{isMl ? "അടുത്തത്: പേരും സമ്മതപത്രവും" : "Next: Name & Consent"}</span>
-              <ArrowRight className="w-4 h-4" />
+              <span>{isMl ? "പേര് നൽകുക" : "Enter Name"}</span>
+              <ArrowRight className="w-4 h-4 stroke-[2.5]" />
             </button>
           </div>
         )}
 
-        {/* ─── SCREEN 6: NAME & CONSENT ─── */}
-        {step === 6 && (
-          <div className="bg-card border border-border rounded-2xl p-6 sm:p-8 shadow-xl">
-            <div className="flex items-center gap-3 mb-6">
+        {/* ─── SCREEN 5: NAME ENTRY (GO LIVE) ─── */}
+        {step === 5 && (
+          <div className="bg-card/95 border border-border/80 rounded-2xl p-3.5 sm:p-4.5 shadow-2xl relative overflow-hidden backdrop-blur-sm space-y-3">
+            <div className="absolute top-0 inset-x-0 h-[2px] bg-gradient-to-r from-transparent via-primary/60 to-transparent" />
+
+            <div className="flex items-start gap-3 pb-2 border-b border-border/40">
               <button
-                onClick={() => setStep(5)}
-                className="p-1.5 rounded-lg border border-border text-muted-foreground hover:text-foreground transition-colors"
+                type="button"
+                onClick={() => setStep(4)}
+                className="w-8 h-8 rounded-lg border border-border/80 bg-zinc-900/60 hover:bg-muted text-muted-foreground hover:text-foreground flex items-center justify-center transition-all cursor-pointer shrink-0 mt-0.5 shadow-2xs"
                 aria-label="Back"
               >
                 <ArrowLeft className="w-4 h-4" />
               </button>
-              <div>
-                <h2 className="text-xl font-bold">
-                  {t("onboarding.step5Title", "Step 5: Name & Quick Consent")}
+              <div className="space-y-0.5 min-w-0 flex-1">
+                <h2 className="text-base sm:text-lg font-extrabold tracking-tight text-foreground">
+                  {t("onboarding.step5Title", "Step 5: Enter Your Full Name")}
                 </h2>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  {t("onboarding.step5Desc", "Almost done! Enter your name and agree to terms to activate your profile.")}
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  {t(
+                    "onboarding.step5Desc",
+                    "Enter your name to complete onboarding. You can add more portfolio and bio details anytime."
+                  )}
                 </p>
               </div>
             </div>
 
-            <form onSubmit={handleCompleteRegistration} className="space-y-6">
+            <form onSubmit={handleCompleteRegistration} className="space-y-3.5">
+              {/* Profile Summary Pill */}
+              <div className="p-2.5 bg-muted/50 border border-border rounded-xl text-xs text-muted-foreground flex items-center justify-between">
+                <div className="flex items-center gap-2 truncate">
+                  <span className="font-semibold text-foreground">{fullPhone}</span>
+                  <span>·</span>
+                  <span>{selectedCity}</span>
+                  <span>·</span>
+                  <span>
+                    {selectedRoles.length} {isMl ? "വിഭാഗങ്ങൾ" : selectedRoles.length === 1 ? "role" : "roles"}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setStep(3)}
+                  className="text-primary font-bold hover:underline text-xs shrink-0 ml-2 cursor-pointer"
+                >
+                  {isMl ? "മാറ്റുക" : "Change"}
+                </button>
+              </div>
+
               {/* Full Name */}
               <div>
-                <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+                <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">
                   {t("onboarding.nameLabel", "Your Full Name")} *
                 </label>
                 <div className="relative">
@@ -856,68 +887,27 @@ export default function CrewOnboardingPage() {
                     }}
                     placeholder={t("onboarding.namePlaceholder", "e.g. Rahul Menon")}
                     autoFocus
-                    className="w-full bg-muted border border-border text-foreground rounded-xl pl-10 pr-4 py-3 text-sm font-semibold outline-none focus:border-primary placeholder:text-muted-foreground/60"
+                    className="w-full bg-muted border border-border text-foreground rounded-xl pl-10 pr-4 py-2.5 text-sm font-semibold outline-none focus:border-primary placeholder:text-muted-foreground/60 transition-colors"
                   />
                 </div>
-              </div>
-
-              {/* One-Tap Consent Agreement */}
-              <div className="p-4 rounded-xl bg-muted/60 border border-border space-y-3">
-                <div className="flex items-center gap-2 text-xs font-bold text-foreground">
-                  <ShieldCheck className="w-4 h-4 text-primary" />
-                  <span>{t("onboarding.consentHeading", "One-Tap Community Agreement")}</span>
-                </div>
-
-                <label className="flex items-start gap-3 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={consentAgreed}
-                    onChange={(e) => setConsentAgreed(e.target.checked)}
-                    className="w-4 h-4 rounded border-border accent-primary mt-0.5"
-                  />
-                  <div className="text-xs text-muted-foreground leading-relaxed">
-                    <p>
-                      {t(
-                        "onboarding.consentTerms",
-                        "I agree to the Terms of Service and Privacy Policy."
-                      )}{" "}
-                      {t(
-                        "onboarding.consentConduct",
-                        "I agree to professional acceptable behaviour on CrewHive."
-                      )}
-                    </p>
-                    <p className="text-[11px] text-primary/80 mt-1 font-mono">
-                      {t("onboarding.consentVersion", "Consent Version 1.0 (Recorded)")}
-                    </p>
-                  </div>
-                </label>
-              </div>
-
-              {/* Summary pill */}
-              <div className="p-3 bg-muted rounded-xl text-xs text-muted-foreground flex items-center justify-between">
-                <span>
-                  {fullPhone} · {selectedCity} · {selectedRoles.length} {isMl ? "വിഭാഗങ്ങൾ" : "roles"}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setStep(4)}
-                  className="text-primary font-semibold hover:underline"
-                >
-                  {isMl ? "മാറ്റുക" : "Change"}
-                </button>
+                <p className="text-[11px] text-muted-foreground mt-1.5">
+                  {isMl
+                    ? "ഫോൺ, റോൾ, സിറ്റി, പേര് എന്നിവ മാത്രം മതി പ്രൊഫൈൽ ലൈവാകാൻ. ബാക്കി വിവരങ്ങൾ പിന്നീട് ചേർക്കാം."
+                    : "Only phone, role, city, and name are required. You can add more details later."}
+                </p>
               </div>
 
               <button
                 type="submit"
-                disabled={loading || !name.trim() || !consentAgreed}
-                className="w-full py-4 px-4 bg-primary text-black font-extrabold rounded-xl text-sm hover:bg-primary/90 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-xl shadow-primary/25 cursor-pointer"
+                disabled={loading || !name.trim()}
+                className="w-full h-10 sm:h-11 bg-primary hover:bg-primary/90 active:scale-[0.99] text-zinc-950 font-extrabold text-sm rounded-xl shadow-lg shadow-primary/20 hover:shadow-primary/30 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed disabled:shadow-none"
               >
                 {loading ? (
                   <div className="w-5 h-5 border-2 border-black border-t-transparent rounded-full animate-spin" />
                 ) : (
                   <>
-                    <span>{t("onboarding.completeProfile", "Create Profile (Under 30s)")}</span>
-                    <CheckCircle2 className="w-4 h-4" />
+                    <span>{t("onboarding.completeProfile", "Create Profile & Go Live")}</span>
+                    <CheckCircle2 className="w-4 h-4 stroke-[2.5]" />
                   </>
                 )}
               </button>
@@ -925,18 +915,20 @@ export default function CrewOnboardingPage() {
           </div>
         )}
 
-        {/* ─── SCREEN 7: SUCCESS CELEBRATION ─── */}
-        {step === 7 && (
-          <div className="bg-card border border-border rounded-2xl p-8 sm:p-10 shadow-2xl text-center space-y-6">
-            <div className="w-20 h-20 rounded-full bg-green-500/10 border-2 border-green-500/30 flex items-center justify-center mx-auto animate-in zoom-in">
-              <CheckCircle2 className="w-10 h-10 text-green-400" />
+        {/* ─── SCREEN 6: SUCCESS CELEBRATION (LIVE) ─── */}
+        {step === 6 && (
+          <div className="bg-card/95 border border-border/80 rounded-2xl p-6 sm:p-8 shadow-2xl text-center space-y-4 relative overflow-hidden backdrop-blur-sm">
+            <div className="absolute top-0 inset-x-0 h-[2px] bg-gradient-to-r from-transparent via-primary/60 to-transparent" />
+
+            <div className="w-14 h-14 rounded-full bg-emerald-500/10 border-2 border-emerald-500/30 flex items-center justify-center mx-auto animate-in zoom-in">
+              <CheckCircle2 className="w-7 h-7 text-emerald-400" />
             </div>
 
             <div>
-              <h2 className="text-2xl sm:text-3xl font-extrabold text-foreground">
+              <h2 className="text-xl sm:text-2xl font-black text-foreground tracking-tight">
                 {t("onboarding.successTitle", "Profile Created Successfully!")}
               </h2>
-              <p className="text-muted-foreground text-sm mt-2 max-w-md mx-auto">
+              <p className="text-muted-foreground text-xs sm:text-sm mt-1.5 max-w-md mx-auto leading-relaxed">
                 {t(
                   "onboarding.successDesc",
                   "Your searchable profile is now live. Complete optional details anytime to get top priority in searches."
@@ -944,28 +936,28 @@ export default function CrewOnboardingPage() {
               </p>
             </div>
 
-            <div className="p-4 rounded-xl bg-muted/60 border border-border text-left text-xs space-y-1.5 max-w-sm mx-auto">
+            <div className="p-3.5 rounded-xl bg-muted/60 border border-border text-left text-xs space-y-2 max-w-sm mx-auto">
               <div className="flex justify-between">
                 <span className="text-muted-foreground">{isMl ? "പേര്:" : "Name:"}</span>
-                <span className="font-semibold">{name}</span>
+                <span className="font-bold text-foreground">{name}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">{isMl ? "ഫോൺ:" : "Phone:"}</span>
-                <span className="font-semibold">{fullPhone}</span>
+                <span className="font-semibold text-foreground">{fullPhone}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">{isMl ? "നഗരം:" : "City:"}</span>
-                <span className="font-semibold">{selectedCity}</span>
+                <span className="font-semibold text-foreground">{selectedCity}</span>
               </div>
             </div>
 
-            <div className="pt-2">
+            <div className="pt-1">
               <button
                 onClick={() => router.push("/crew/dashboard")}
-                className="w-full sm:w-auto min-w-64 py-3.5 px-6 bg-primary text-black font-extrabold rounded-xl text-sm hover:bg-primary/90 transition-all shadow-lg shadow-primary/20 cursor-pointer inline-flex items-center justify-center gap-2"
+                className="w-full sm:w-auto min-w-56 h-11 px-6 bg-primary hover:bg-primary/90 active:scale-[0.99] text-zinc-950 font-extrabold text-sm rounded-xl shadow-lg shadow-primary/20 hover:shadow-primary/30 transition-all inline-flex items-center justify-center gap-2 cursor-pointer"
               >
                 <span>{t("onboarding.goToDashboard", "Go to Crew Dashboard")}</span>
-                <ArrowRight className="w-4 h-4" />
+                <ArrowRight className="w-4 h-4 stroke-[2.5]" />
               </button>
             </div>
           </div>
@@ -973,7 +965,7 @@ export default function CrewOnboardingPage() {
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-border/50 py-4 text-center text-xs text-muted-foreground">
+      <footer className="border-t border-border/50 py-2.5 text-center text-[11px] text-muted-foreground">
         © 2026–2027 CrewHive · Kerala AV & Event Technician Network
       </footer>
     </div>

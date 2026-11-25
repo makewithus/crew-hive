@@ -9,7 +9,7 @@ import LanguageToggle from "@/components/LanguageToggle";
 import LogoutConfirmModal from "@/components/LogoutConfirmModal";
 import { Button } from "@/components/ui/button";
 import { USER_ROLES } from "@/utils/constants";
-import { Menu, X } from "lucide-react";
+import { Menu, X, Search } from "lucide-react";
 import { toast } from "sonner";
 
 export const Header = () => {
@@ -99,7 +99,7 @@ export const Header = () => {
             </Link>
 
             {/* Desktop Navigation */}
-            <nav className="hidden md:flex items-center gap-1 lg:gap-2 shrink-0">
+            <nav className="hidden lg:flex items-center gap-1 lg:gap-2 shrink-0">
               {navLinks.map((link) => {
                 const isActive = pathname === link.href;
                 return (
@@ -119,7 +119,16 @@ export const Header = () => {
             </nav>
 
             {/* Desktop Controls */}
-            <div className="hidden md:flex items-center gap-2.5 shrink-0">
+            <div className="hidden lg:flex items-center gap-2 shrink-0">
+              <Link
+                href="/organizer/search"
+                className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors"
+                title={isMl ? "ക്രൂവിനെ തിരയുക" : "Search Crew"}
+                aria-label="Search Crew"
+              >
+                <Search className="w-4 h-4" />
+              </Link>
+
               <LanguageToggle />
 
               {currentUser ? (
@@ -153,8 +162,16 @@ export const Header = () => {
               )}
             </div>
 
-            {/* Mobile Menu Button */}
-            <div className="flex items-center gap-2 md:hidden">
+            {/* Mobile / Tablet Menu Button (< lg) */}
+            <div className="flex items-center gap-1.5 lg:hidden">
+              <Link
+                href="/organizer/search"
+                className="p-2 text-muted-foreground hover:text-foreground rounded-lg hover:bg-muted/60 transition-colors"
+                title={isMl ? "ക്രൂവിനെ തിരയുക" : "Search Crew"}
+                aria-label="Search Crew"
+              >
+                <Search className="w-4 h-4" />
+              </Link>
               <LanguageToggle compact />
               <button
                 onClick={() => setIsMenuOpen(!isMenuOpen)}
@@ -166,9 +183,9 @@ export const Header = () => {
             </div>
           </div>
 
-          {/* Mobile Navigation */}
+          {/* Mobile / Tablet Navigation (< lg) */}
           {isMenuOpen && (
-            <div className="md:hidden pb-4 pt-2 space-y-2 border-t border-border">
+            <div className="lg:hidden pb-4 pt-2 space-y-2 border-t border-border">
               {navLinks.map((link) => {
                 const isActive = pathname === link.href;
                 return (

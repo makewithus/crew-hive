@@ -1,0 +1,387 @@
+openapi: 3.0.3
+info:
+  title: CrewHive Shared API
+  version: 2.0.0
+  description: Canonical API for the website and the mobile app. Envelope { success, data, message } / { success:false, error:{code,message,details} }.
+servers:
+  - url: http://localhost:4000
+components:
+  securitySchemes:
+    firebaseIdToken: { type: http, scheme: bearer, bearerFormat: Firebase ID token }
+  schemas:
+    Success: { type: object, properties: { success: { type: boolean, example: true }, data: { type: object }, message: { type: string } } }
+    Error: { type: object, properties: { success: { type: boolean, example: false }, error: { type: object, properties: { code: { type: string }, message: { type: string }, details: { type: object } } } } }
+paths:
+  /api/v1/auth/otp/send:
+    post:
+      summary: "—; per-IP/device/phone limits; body `sendOtp`"
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Success' } } } }
+        '4XX': { description: Error, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+  /api/v1/auth/send-otp:
+    post:
+      summary: "—; alias of /auth/otp/send"
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Success' } } } }
+        '4XX': { description: Error, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+  /api/v1/auth/otp/verify:
+    post:
+      summary: "—; body `verifyOtp`; returns customToken+idToken+refreshToken"
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Success' } } } }
+        '4XX': { description: Error, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+  /api/v1/auth/verify-otp:
+    post:
+      summary: "—; alias"
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Success' } } } }
+        '4XX': { description: Error, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+  /api/v1/auth/refresh:
+    post:
+      summary: "—; body `refresh`"
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Success' } } } }
+        '4XX': { description: Error, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+  /api/v1/auth/logout:
+    post:
+      summary: "—; revokes refresh tokens"
+      security: [ { firebaseIdToken: [] } ]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Success' } } } }
+        '4XX': { description: Error, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+  /api/v1/auth/me:
+    get:
+      summary: "—; role/approved/exists"
+      security: [ { firebaseIdToken: [] } ]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Success' } } } }
+        '4XX': { description: Error, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+  /api/v1/crew/onboard:
+    post:
+      summary: "—; body schema `crewOnboard`"
+      security: [ { firebaseIdToken: [] } ]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Success' } } } }
+        '4XX': { description: Error, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+  /api/v1/crew/me:
+    get:
+      summary: "crew"
+      security: [ { firebaseIdToken: [] } ]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Success' } } } }
+        '4XX': { description: Error, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+    patch:
+      summary: "crew"
+      security: [ { firebaseIdToken: [] } ]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Success' } } } }
+        '4XX': { description: Error, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+  /api/v1/crew/me/availability:
+    get:
+      summary: "crew"
+      security: [ { firebaseIdToken: [] } ]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Success' } } } }
+        '4XX': { description: Error, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+    put:
+      summary: "crew; body schema `availability`"
+      security: [ { firebaseIdToken: [] } ]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Success' } } } }
+        '4XX': { description: Error, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+  /api/v1/crew/me/location-consent/withdraw:
+    post:
+      summary: "crew"
+      security: [ { firebaseIdToken: [] } ]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Success' } } } }
+        '4XX': { description: Error, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+  /api/v1/crew/me/requests:
+    get:
+      summary: "crew"
+      security: [ { firebaseIdToken: [] } ]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Success' } } } }
+        '4XX': { description: Error, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+  /api/v1/crew/me/requests/:bookingId/respond:
+    post:
+      summary: "crew; body schema `respond`"
+      security: [ { firebaseIdToken: [] } ]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Success' } } } }
+        '4XX': { description: Error, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+  /api/v1/crew/me/association:
+    post:
+      summary: "crew"
+      security: [ { firebaseIdToken: [] } ]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Success' } } } }
+        '4XX': { description: Error, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+  /api/v1/crew:
+    get:
+      summary: "—"
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Success' } } } }
+        '4XX': { description: Error, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+  /api/v1/crew/:id:
+    get:
+      summary: "—"
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Success' } } } }
+        '4XX': { description: Error, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+  /api/v1/crew/:id/contact:
+    get:
+      summary: "organizer (recruiter)"
+      security: [ { firebaseIdToken: [] } ]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Success' } } } }
+        '4XX': { description: Error, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+  /api/v1/recruiters/onboard:
+    post:
+      summary: "—; body schema `recruiterOnboard`"
+      security: [ { firebaseIdToken: [] } ]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Success' } } } }
+        '4XX': { description: Error, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+  /api/v1/recruiters/me:
+    get:
+      summary: "organizer (recruiter)"
+      security: [ { firebaseIdToken: [] } ]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Success' } } } }
+        '4XX': { description: Error, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+  /api/v1/recruiters/me/shortlist:
+    get:
+      summary: "organizer (recruiter)"
+      security: [ { firebaseIdToken: [] } ]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Success' } } } }
+        '4XX': { description: Error, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+  /api/v1/recruiters/me/shortlist/:crewId:
+    put:
+      summary: "organizer (recruiter)"
+      security: [ { firebaseIdToken: [] } ]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Success' } } } }
+        '4XX': { description: Error, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+    delete:
+      summary: "organizer (recruiter)"
+      security: [ { firebaseIdToken: [] } ]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Success' } } } }
+        '4XX': { description: Error, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+  /api/v1/recruiters/me/shows:
+    get:
+      summary: "organizer (recruiter)"
+      security: [ { firebaseIdToken: [] } ]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Success' } } } }
+        '4XX': { description: Error, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+    post:
+      summary: "organizer (recruiter)"
+      security: [ { firebaseIdToken: [] } ]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Success' } } } }
+        '4XX': { description: Error, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+  /api/v1/recruiters/me/shows/:id:
+    delete:
+      summary: "organizer (recruiter)"
+      security: [ { firebaseIdToken: [] } ]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Success' } } } }
+        '4XX': { description: Error, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+  /api/v1/requests:
+    post:
+      summary: "organizer (recruiter); body schema `createRequest`"
+      security: [ { firebaseIdToken: [] } ]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Success' } } } }
+        '4XX': { description: Error, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+    get:
+      summary: "organizer (recruiter)"
+      security: [ { firebaseIdToken: [] } ]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Success' } } } }
+        '4XX': { description: Error, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+  /api/v1/requests/:id:
+    get:
+      summary: "organizer (recruiter)"
+      security: [ { firebaseIdToken: [] } ]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Success' } } } }
+        '4XX': { description: Error, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+    patch:
+      summary: "organizer (recruiter)"
+      security: [ { firebaseIdToken: [] } ]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Success' } } } }
+        '4XX': { description: Error, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+  /api/v1/notifications:
+    get:
+      summary: "—"
+      security: [ { firebaseIdToken: [] } ]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Success' } } } }
+        '4XX': { description: Error, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+  /api/v1/notifications/:id/read:
+    post:
+      summary: "—"
+      security: [ { firebaseIdToken: [] } ]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Success' } } } }
+        '4XX': { description: Error, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+  /api/v1/devices:
+    post:
+      summary: "—"
+      security: [ { firebaseIdToken: [] } ]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Success' } } } }
+        '4XX': { description: Error, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+    delete:
+      summary: "—"
+      security: [ { firebaseIdToken: [] } ]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Success' } } } }
+        '4XX': { description: Error, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+  /api/v1/reports:
+    post:
+      summary: "—; body schema `report`"
+      security: [ { firebaseIdToken: [] } ]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Success' } } } }
+        '4XX': { description: Error, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+  /api/v1/blocks:
+    get:
+      summary: "—"
+      security: [ { firebaseIdToken: [] } ]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Success' } } } }
+        '4XX': { description: Error, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+  /api/v1/blocks/:id:
+    put:
+      summary: "—"
+      security: [ { firebaseIdToken: [] } ]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Success' } } } }
+        '4XX': { description: Error, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+    delete:
+      summary: "—"
+      security: [ { firebaseIdToken: [] } ]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Success' } } } }
+        '4XX': { description: Error, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+  /api/v1/account:
+    delete:
+      summary: "—"
+      security: [ { firebaseIdToken: [] } ]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Success' } } } }
+        '4XX': { description: Error, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+  /api/v1/taxonomy/roles:
+    get:
+      summary: "—"
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Success' } } } }
+        '4XX': { description: Error, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+  /api/v1/taxonomy/cities:
+    get:
+      summary: "—"
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Success' } } } }
+        '4XX': { description: Error, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+  /api/v1/features:
+    get:
+      summary: "—"
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Success' } } } }
+        '4XX': { description: Error, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+  /api/v1/admin/profiles:
+    get:
+      summary: "admin / super_admin"
+      security: [ { firebaseIdToken: [] } ]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Success' } } } }
+        '4XX': { description: Error, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+  /api/v1/admin/profiles/:id/:action:
+    post:
+      summary: "admin / super_admin"
+      security: [ { firebaseIdToken: [] } ]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Success' } } } }
+        '4XX': { description: Error, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+  /api/v1/admin/metrics:
+    get:
+      summary: "admin / super_admin"
+      security: [ { firebaseIdToken: [] } ]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Success' } } } }
+        '4XX': { description: Error, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+  /api/v1/admin/reports:
+    get:
+      summary: "admin / super_admin"
+      security: [ { firebaseIdToken: [] } ]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Success' } } } }
+        '4XX': { description: Error, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+  /api/v1/admin/reports/:id/resolve:
+    post:
+      summary: "admin / super_admin"
+      security: [ { firebaseIdToken: [] } ]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Success' } } } }
+        '4XX': { description: Error, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+  /api/v1/admin/taxonomy/roles:
+    post:
+      summary: "admin / super_admin"
+      security: [ { firebaseIdToken: [] } ]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Success' } } } }
+        '4XX': { description: Error, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+  /api/v1/admin/taxonomy/cities:
+    put:
+      summary: "admin / super_admin"
+      security: [ { firebaseIdToken: [] } ]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Success' } } } }
+        '4XX': { description: Error, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+  /api/v1/admin/associations:
+    get:
+      summary: "admin / super_admin"
+      security: [ { firebaseIdToken: [] } ]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Success' } } } }
+        '4XX': { description: Error, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+    post:
+      summary: "admin / super_admin"
+      security: [ { firebaseIdToken: [] } ]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Success' } } } }
+        '4XX': { description: Error, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+  /api/v1/admin/associations/import:
+    post:
+      summary: "admin / super_admin"
+      security: [ { firebaseIdToken: [] } ]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Success' } } } }
+        '4XX': { description: Error, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+  /api/v1/admin/features:
+    put:
+      summary: "admin / super_admin"
+      security: [ { firebaseIdToken: [] } ]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Success' } } } }
+        '4XX': { description: Error, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+  /api/v1/admin/users:
+    get:
+      summary: "super_admin"
+      security: [ { firebaseIdToken: [] } ]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Success' } } } }
+        '4XX': { description: Error, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+  /api/v1/admin/users/:id/role:
+    put:
+      summary: "super_admin"
+      security: [ { firebaseIdToken: [] } ]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Success' } } } }
+        '4XX': { description: Error, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }

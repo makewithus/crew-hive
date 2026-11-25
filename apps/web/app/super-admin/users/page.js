@@ -1,5 +1,6 @@
 "use client";
 
+import { apiFetch } from "@/lib/api-client";
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
@@ -46,7 +47,7 @@ export default function SuperAdminUsersPage() {
     if (!currentUser) return;
     try {
       const token = await currentUser.getIdToken();
-      const res = await fetch("/api/admin/users", {
+      const res = await apiFetch("/api/admin/users", {
         headers: { Authorization: `Bearer ${token}` },
       });
       const json = await res.json();
@@ -83,7 +84,7 @@ export default function SuperAdminUsersPage() {
     try {
       if (action === "approve" || action === "revoke" || action === "reject") {
         const token = await currentUser.getIdToken();
-        const res = await fetch("/api/admin/approve", {
+        const res = await apiFetch("/api/admin/approve", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -263,15 +264,6 @@ export default function SuperAdminUsersPage() {
                 </span>
               </div>
             )}
-            <button
-              onClick={() => {
-                fetchUsers();
-                toast.info("Refreshed users list");
-              }}
-              className="px-3 py-1.5 text-xs font-semibold rounded-xl bg-card border border-border text-muted-foreground hover:text-foreground hover:border-primary/40 transition-all cursor-pointer"
-            >
-              ↻ Refresh
-            </button>
           </div>
         </div>
 

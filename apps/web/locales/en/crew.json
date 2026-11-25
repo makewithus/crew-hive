@@ -21,8 +21,8 @@
     "step4Desc": "Where are you primarily based for event work in Kerala?",
     "launchCities": "Launch Hubs",
     "otherDistricts": "All Kerala Districts",
-    "step5Title": "Step 5: Name & Quick Consent",
-    "step5Desc": "Almost done! Enter your name and agree to terms to activate your profile.",
+    "step5Title": "Step 5: Enter Your Full Name",
+    "step5Desc": "Enter your name to complete onboarding. You can add more portfolio and bio details anytime.",
     "nameLabel": "Your Full Name",
     "namePlaceholder": "e.g. Rahul Menon",
     "consentHeading": "One-Tap Community Agreement",
@@ -33,8 +33,7 @@
     "creating": "Activating your profile...",
     "successTitle": "Profile Created Successfully!",
     "successDesc": "Your searchable profile is now live. Complete optional details anytime to get top priority in searches.",
-    "goToDashboard": "Go to Crew Dashboard",
-    "devHint": "Dev mode: Use code 123456"
+    "goToDashboard": "Go to Crew Dashboard"
   },
   "dashboard": {
     "title": "Crew Dashboard",

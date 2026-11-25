@@ -1,0 +1,8 @@
+rules_version = '2';
+// PROPOSED (not deployed, not applied): all application data access now goes through the Express backend (Admin SDK),
+// so browsers and apps need no direct Firestore access. Deploy only after the WhatsApp webhook migration review and explicit approval.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} { allow read, write: if false; }
+  }
+}

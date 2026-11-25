@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { getApprovedCrew, createBooking } from "@/lib/firestore";
+import { MapPin, Clock } from "lucide-react";
 
 const CREW_ROLES = [
   "All Roles",
@@ -51,6 +52,17 @@ export default function EmployerDashboard() {
   const [jobDetails, setJobDetails] = useState("");
   const [bookingLoading, setBookingLoading] = useState(false);
   const [toast, setToast] = useState(null);
+
+  // Lock body scroll when booking modal is open
+  useEffect(() => {
+    if (bookingModal) {
+      const orig = document.body.style.overflow;
+      document.body.style.overflow = "hidden";
+      return () => {
+        document.body.style.overflow = orig;
+      };
+    }
+  }, [bookingModal]);
 
   // Auth guard
   useEffect(() => {
@@ -269,8 +281,18 @@ export default function EmployerDashboard() {
 
                 {/* Details */}
                 <div className="text-zinc-400 text-xs space-y-1">
-                  {member.city && <p>📍 {member.city}</p>}
-                  {member.experience && <p>⏱ {member.experience}</p>}
+                  {member.city && (
+                    <p className="flex items-center gap-1.5">
+                      <MapPin className="w-3.5 h-3.5 text-[#F5A623] shrink-0" />
+                      <span>{member.city}</span>
+                    </p>
+                  )}
+                  {member.experience && (
+                    <p className="flex items-center gap-1.5">
+                      <Clock className="w-3.5 h-3.5 text-[#F5A623] shrink-0" />
+                      <span>{member.experience}</span>
+                    </p>
+                  )}
                 </div>
 
                 {/* Book button */}

@@ -5,7 +5,7 @@ import PublicNavbar from "@/components/PublicNavbar";
 import Footer from "@/components/Footer";
 import SignUpModal from "@/components/SignUpModal";
 import { useLanguage } from "@/context/LanguageContext";
-import { ShieldCheck, Lock, MapPin, EyeOff } from "lucide-react";
+import { Lock, MapPin, EyeOff } from "lucide-react";
 
 export default function PrivacyPage() {
   const { t, getSection, isMalayalam } = useLanguage();

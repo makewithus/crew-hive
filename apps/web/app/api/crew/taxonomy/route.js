@@ -1,25 +1,10 @@
-import { NextResponse } from "next/server";
-import {
-  PARENT_ROLES,
-  CITIES,
-  EXPERIENCE_RANGES,
-  TRAVEL_WILLINGNESS,
-  LANGUAGES_LIST,
-  EQUIPMENT_CATEGORIES,
-  CURRENT_CONSENT_VERSION,
-} from "@/utils/taxonomy";
+/** ./crew/taxonomy — thin proxy to the shared Express backend (no business logic, no Firestore access). */
+import { proxy, readJson, digits, NextResponse, callExpress, legacyError } from "../../../../lib/express-proxy.js";
 
-export async function GET() {
-  return NextResponse.json({
-    success: true,
-    data: {
-      roles: PARENT_ROLES,
-      cities: CITIES,
-      experienceRanges: EXPERIENCE_RANGES,
-      travelOptions: TRAVEL_WILLINGNESS,
-      languages: LANGUAGES_LIST,
-      equipmentCategories: EQUIPMENT_CATEGORIES,
-      consentVersion: CURRENT_CONSENT_VERSION,
-    },
-  });
+export const dynamic = "force-dynamic";
+
+export async function GET(request) {
+  const [roles, cities] = await Promise.all([callExpress(request, { path: "/taxonomy/roles" }), callExpress(request, { path: "/taxonomy/cities" })]);
+  if (!roles.ok) return legacyError(roles);
+  return NextResponse.json({ success: true, data: { roles: roles.body.data.items, cities: cities.body?.data?.cities || cities.body?.data?.launchCities || [] } });
 }

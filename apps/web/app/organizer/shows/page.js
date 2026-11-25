@@ -12,16 +12,17 @@
 
 "use client";
 
+import { apiFetch } from "@/lib/api-client";
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useAuth } from "@/hooks/useAuth";
 import Header from "@/components/Header";
 import AuthGuard from "@/components/AuthGuard";
-import LanguageToggle from "@/components/LanguageToggle";
 import { useLanguage } from "@/context/LanguageContext";
 import { USER_ROLES } from "@/utils/constants";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import DatePicker from "@/components/DatePicker";
 import {
   Calendar,
   Layers,
@@ -33,6 +34,7 @@ import {
   CheckCircle2,
   Search,
   X,
+  AlertTriangle,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -51,6 +53,25 @@ export default function OrganizerShowsPage() {
   const [newLocation, setNewLocation] = useState("");
   const [selectedRoles, setSelectedRoles] = useState(["Sound", "Lighting", "Camera", "Stage"]);
   const [creating, setCreating] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState(null);
+
+  // Lock background scroll when any modal is open
+  useEffect(() => {
+    if (showCreateModal || !!deleteTarget) {
+      const origHtmlOverflow = document.documentElement.style.overflow;
+      const origBodyOverflow = document.body.style.overflow;
+      document.documentElement.classList.add("modal-open");
+      document.body.classList.add("modal-open");
+      document.documentElement.style.overflow = "hidden";
+      document.body.style.overflow = "hidden";
+      return () => {
+        document.documentElement.classList.remove("modal-open");
+        document.body.classList.remove("modal-open");
+        document.documentElement.style.overflow = origHtmlOverflow;
+        document.body.style.overflow = origBodyOverflow;
+      };
+    }
+  }, [showCreateModal, deleteTarget]);
 
   useEffect(() => {
     loadShows();
@@ -63,7 +84,7 @@ export default function OrganizerShowsPage() {
 
     try {
       const phoneParam = encodeURIComponent(userPhone || currentUser?.phoneNumber || "");
-      const res = await fetch(`/api/recruiter/shows?phone=${phoneParam}`);
+      const res = await apiFetch(`/api/recruiter/shows?phone=${phoneParam}`);
       const json = await res.json();
 
       if (json.success) {
@@ -88,7 +109,7 @@ export default function OrganizerShowsPage() {
     setCreating(true);
     try {
       const phoneParam = userPhone || currentUser?.phoneNumber || "";
-      const res = await fetch("/api/recruiter/shows", {
+      const res = await apiFetch("/api/recruiter/shows", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -121,7 +142,7 @@ export default function OrganizerShowsPage() {
   const handleDeleteShow = async (showId) => {
     try {
       const phoneParam = encodeURIComponent(userPhone || currentUser?.phoneNumber || "");
-      const res = await fetch(`/api/recruiter/shows?showId=${showId}&phone=${phoneParam}`, {
+      const res = await apiFetch(`/api/recruiter/shows?showId=${showId}&phone=${phoneParam}`, {
         method: "DELETE",
       });
       if (res.ok) {
@@ -195,7 +216,6 @@ export default function OrganizerShowsPage() {
               </div>
 
               <div className="flex items-center gap-3">
-                <LanguageToggle compact />
                 <Button
                   onClick={() => setShowCreateModal(true)}
                   className="bg-primary text-primary-foreground hover:bg-primary/90 text-xs font-semibold gap-1.5"
@@ -284,8 +304,9 @@ export default function OrganizerShowsPage() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => handleDeleteShow(show.id)}
-                          className="text-destructive hover:bg-destructive/10 text-xs"
+                          onClick={() => setDeleteTarget(show)}
+                          className="text-destructive hover:bg-destructive/10 text-xs cursor-pointer"
+                          title={isMalayalam ? "ഇല്ലാതാക്കുക" : "Delete show roster"}
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </Button>
@@ -379,16 +400,19 @@ export default function OrganizerShowsPage() {
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-semibold mb-1">Event Date</label>
-                    <Input
-                      type="date"
+                    <label className="block text-xs font-semibold mb-1">
+                      {isMalayalam ? "തീയതി" : "Event Date"}
+                    </label>
+                    <DatePicker
                       value={newDate}
-                      onChange={(e) => setNewDate(e.target.value)}
-                      className="bg-muted text-sm"
+                      onChange={(d) => setNewDate(d)}
+                      placeholder={isMalayalam ? "തീയതി തിരഞ്ഞെടുക്കുക" : "Select date"}
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold mb-1">City / Venue</label>
+                    <label className="block text-xs font-semibold mb-1">
+                      {isMalayalam ? "നഗരം / വേദി" : "City / Venue"}
+                    </label>
                     <Input
                       type="text"
                       placeholder="e.g. Kochi"
@@ -442,6 +466,47 @@ export default function OrganizerShowsPage() {
                   </Button>
                 </div>
               </form>
+            </div>
+          </div>
+        )}
+
+        {/* Delete Show Confirmation Modal */}
+        {deleteTarget && (
+          <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in-0 duration-150">
+            <div className="bg-[#161616] border border-[#2E2E2E] rounded-2xl p-6 sm:p-7 max-w-md w-full shadow-2xl relative overflow-hidden animate-in zoom-in-95 duration-150 text-center sm:text-left">
+              <div className="w-12 h-12 rounded-2xl bg-destructive/10 border border-destructive/20 flex items-center justify-center text-destructive mb-4 mx-auto sm:mx-0">
+                <AlertTriangle className="w-6 h-6" />
+              </div>
+              <h3 className="text-lg font-bold text-foreground mb-1.5">
+                {isMalayalam ? "ഇവന്റ് റോസ്റ്റർ ഇല്ലാതാക്കണോ?" : "Delete Show Roster?"}
+              </h3>
+              <p className="text-xs text-muted-foreground leading-relaxed mb-6">
+                {isMalayalam
+                  ? `"${deleteTarget.name || deleteTarget.title}" റോസ്റ്ററും നിയുക്ത ക്രൂ വിവരങ്ങളും ശാശ്വതമായി നീക്കം ചെയ്യപ്പെടും. ഈ പ്രവർത്തനം പഴയപടിയാക്കാൻ കഴിയില്ല.`
+                  : `Are you sure you want to delete "${deleteTarget.name || deleteTarget.title}"? This will permanently remove this event roster and all slotted roles. This action cannot be undone.`}
+              </p>
+              <div className="flex items-center justify-end gap-3">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setDeleteTarget(null)}
+                  className="text-xs cursor-pointer"
+                >
+                  {isMalayalam ? "റദ്ദാക്കുക" : "Cancel"}
+                </Button>
+                <Button
+                  type="button"
+                  variant="destructive"
+                  onClick={async () => {
+                    const id = deleteTarget.id;
+                    setDeleteTarget(null);
+                    await handleDeleteShow(id);
+                  }}
+                  className="text-xs font-semibold cursor-pointer"
+                >
+                  {isMalayalam ? "ഇല്ലാതാക്കുക" : "Delete Show"}
+                </Button>
+              </div>
             </div>
           </div>
         )}
