@@ -41,13 +41,15 @@ const destroyVerifier = () => {
   if (typeof window === "undefined") return;
   try { window._recaptchaVerifier?.clear(); } catch (_) {}
   window._recaptchaVerifier = null;
-  // Replace the DOM node so Firebase has no stale reference
+  // Replace the DOM node (or create one on body if missing) so Firebase always has a fresh container
   const el = document.getElementById("recaptcha-container");
+  const fresh = document.createElement("div");
+  fresh.id = "recaptcha-container";
+  fresh.style.cssText = "position:fixed;bottom:0;left:0;opacity:0;pointer-events:none;z-index:-1";
   if (el && el.parentNode) {
-    const fresh = document.createElement("div");
-    fresh.id = "recaptcha-container";
-    fresh.style.cssText = "position:absolute;bottom:0;opacity:0;pointer-events:none";
     el.parentNode.replaceChild(fresh, el);
+  } else if (document.body) {
+    document.body.appendChild(fresh);
   }
   try { if (window.grecaptcha?.reset) window.grecaptcha.reset(); } catch (_) {}
 };
@@ -160,7 +162,8 @@ export const sendOtp = async (fullPhone) => {
       window._recaptchaVerifier = verifier;
       await verifier.render();
     } catch (err) {
-      return { success: false, error: "reCAPTCHA setup failed. Please refresh the page." };
+      console.error("[recaptcha] render error:", err?.code, err?.message);
+      return { success: false, error: err?.code ? friendlyError(err.code) : "reCAPTCHA setup failed. Please refresh the page." };
     }
   }
 
