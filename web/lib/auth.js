@@ -1,29 +1,22 @@
 /**
- * lib/auth.js — Firebase Phone Auth (zero visible reCAPTCHA, instant OTP)
+ * lib/auth.js — Unified Backend OTP Authentication (zero client reCAPTCHA puzzles)
  *
  * Strategy:
- * - RecaptchaVerifier(invisible) is PRE-RENDERED on page mount via prewarmRecaptcha()
- * - verifier.render() runs in background so the token is already solved
- *   by the time the user clicks "Send OTP" — zero extra wait, no puzzle shown
- * - After each send we immediately re-warm in background for the next request
+ * - All OTP sending and verification goes through the Express backend (/api/auth/send-otp & /api/auth/verify-otp).
+ * - On verification, the backend returns a Firebase customToken, and the client signs in with signInWithCustomToken(auth, customToken).
+ * - Zero reCAPTCHA image puzzles or client-side verification popups.
  */
 
 import { apiFetch } from "./api-client";
-import {
-  signInWithPhoneNumber,
-  signInWithCustomToken,
-  RecaptchaVerifier,
-  signOut,
-} from "firebase/auth";
+import { signInWithCustomToken, signOut } from "firebase/auth";
 import { auth } from "./firebase";
 
 // ─── Module-level state ───────────────────────────────────────────────────────
-let _confirmationResult = null;
 let _pendingPhone = null;
 let _lastOtpSentAt = 0;
 const OTP_DEBOUNCE_MS = 30_000;
 
-// ─── DEV detection ────────────────────────────────────────────────────────────
+// ─── DEV detection (kept for backward compatibility) ──────────────────────────
 export const isLocalDev = () => {
   if (process.env.NODE_ENV === "production" || process.env.NEXT_PUBLIC_APP_ENV === "production") {
     return false;
@@ -36,68 +29,8 @@ export const isLocalDev = () => {
   return false;
 };
 
-// ─── reCAPTCHA helpers ────────────────────────────────────────────────────────
-const destroyVerifier = () => {
-  if (typeof window === "undefined") return;
-  try { window._recaptchaVerifier?.clear(); } catch (_) {}
-  window._recaptchaVerifier = null;
-  // Replace the DOM node (or create one on body if missing) so Firebase always has a fresh container
-  const el = document.getElementById("recaptcha-container");
-  const fresh = document.createElement("div");
-  fresh.id = "recaptcha-container";
-  fresh.style.cssText = "position:fixed;bottom:0;left:0;opacity:0;pointer-events:none;z-index:-1";
-  if (el && el.parentNode) {
-    el.parentNode.replaceChild(fresh, el);
-  } else if (document.body) {
-    document.body.appendChild(fresh);
-  }
-  try { if (window.grecaptcha?.reset) window.grecaptcha.reset(); } catch (_) {}
-};
-
-const buildAndRender = () => {
-  if (typeof window === "undefined" || isLocalDev()) return;
-  destroyVerifier();
-  try {
-    const v = new RecaptchaVerifier(auth, "recaptcha-container", {
-      size: "invisible",
-      callback: () => {},
-      "expired-callback": () => {
-        // Token expired silently — rebuild for next use
-        setTimeout(() => buildAndRender(), 0);
-      },
-    });
-    window._recaptchaVerifier = v;
-    // render() pre-solves the invisible reCAPTCHA in the background
-    v.render().catch(() => {});
-  } catch (err) {
-    console.error("[recaptcha] buildAndRender error:", err.message);
-  }
-};
-
-// ─── Public: call once on login page mount ────────────────────────────────────
-export const prewarmRecaptcha = () => buildAndRender();
-
-// ─── Error mapping ────────────────────────────────────────────────────────────
-const FIREBASE_ERRORS = {
-  "auth/invalid-phone-number": "Invalid phone number. Include country code (e.g. +91XXXXXXXXXX).",
-  "auth/too-many-requests": "Too many OTP requests. Please wait a few minutes and try again.",
-  "auth/quota-exceeded": "SMS quota exceeded. Please try again later.",
-  "auth/captcha-check-failed": "Verification failed. Please refresh and try again.",
-  "auth/network-request-failed": "Network error. Check your internet connection.",
-  "auth/operation-not-allowed": "Phone sign-in is not enabled in Firebase Console.",
-  "auth/invalid-verification-code": "Incorrect OTP. Please check and try again.",
-  "auth/code-expired": "OTP has expired. Please request a new one.",
-  "auth/session-expired": "Session expired. Please request a new OTP.",
-  "auth/missing-verification-code": "Please enter the OTP code.",
-  "auth/billing-not-enabled": "Firebase Blaze plan required for phone auth.",
-  "auth/internal-error": "Firebase error. Make sure this domain is in Authorized Domains.",
-  "auth/missing-app-credential": "reCAPTCHA error. Please refresh the page.",
-  "auth/missing-client-identifier": "reCAPTCHA error. Please refresh the page.",
-  "auth/invalid-app-credential": "reCAPTCHA error. Please refresh the page.",
-};
-
-const friendlyError = (code) =>
-  FIREBASE_ERRORS[code] || `Something went wrong (${code || "unknown"}). Please refresh and try again.`;
+// Kept as a no-op so existing page mounts calling prewarmRecaptcha() stay compatible
+export const prewarmRecaptcha = () => {};
 
 // ─── Phone validation ─────────────────────────────────────────────────────────
 export const isValidPhone = (phone) => /^\+[1-9]\d{6,14}$/.test(phone);
@@ -110,36 +43,14 @@ export const isValidIndianPhone = (phone) => {
   return false;
 };
 
-// ─── Send OTP ─────────────────────────────────────────────────────────────────
+// ─── Send OTP (via Express Backend) ───────────────────────────────────────────
 export const sendOtp = async (fullPhone) => {
   if (!isValidPhone(fullPhone)) {
     return { success: false, error: "Invalid phone number format." };
   }
 
-  // Strictly validate 10-digit Indian mobile number at the phone step
   if (fullPhone.startsWith("+91") && !isValidIndianPhone(fullPhone)) {
     return { success: false, error: "Please provide a valid 10-digit Indian mobile number" };
-  }
-
-  // LOCAL MODE — validate and persist phone session
-  if (isLocalDev()) {
-    try {
-      const res = await apiFetch("/api/auth/send-otp", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone: fullPhone }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        return { success: false, error: data.error || "Please provide a valid 10-digit Indian mobile number" };
-      }
-    } catch (_) {}
-
-    _pendingPhone = fullPhone;
-    if (typeof window !== "undefined") {
-      try { sessionStorage.setItem("crewhive_pending_phone", fullPhone); } catch (_) {}
-    }
-    return { success: true };
   }
 
   const now = Date.now();
@@ -148,87 +59,60 @@ export const sendOtp = async (fullPhone) => {
     return { success: false, error: `Please wait ${wait}s before requesting another OTP.` };
   }
 
-  // Grab the pre-warmed verifier (already rendered = token ready = instant)
-  // If missing for any reason, build one now
-  let verifier = window._recaptchaVerifier || null;
-  if (!verifier) {
-    destroyVerifier();
-    try {
-      verifier = new RecaptchaVerifier(auth, "recaptcha-container", {
-        size: "invisible",
-        callback: () => {},
-        "expired-callback": () => setTimeout(() => buildAndRender(), 0),
-      });
-      window._recaptchaVerifier = verifier;
-      await verifier.render();
-    } catch (err) {
-      console.error("[recaptcha] render error:", err?.code, err?.message);
-      return { success: false, error: err?.code ? friendlyError(err.code) : "reCAPTCHA setup failed. Please refresh the page." };
-    }
-  }
-
-  // Detach from global now so a re-warm can start without conflict
-  window._recaptchaVerifier = null;
-
   try {
-    const confirmationResult = await signInWithPhoneNumber(auth, fullPhone, verifier);
-    _confirmationResult = confirmationResult;
+    const res = await apiFetch("/api/auth/send-otp", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ phone: fullPhone }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      return { success: false, error: data.error || "Failed to send OTP. Please try again." };
+    }
+
     _lastOtpSentAt = Date.now();
     _pendingPhone = fullPhone;
-    // Re-warm immediately in background so resend / next send is also instant
-    setTimeout(() => buildAndRender(), 0);
+    if (typeof window !== "undefined") {
+      try { sessionStorage.setItem("crewhive_pending_phone", fullPhone); } catch (_) {}
+    }
     return { success: true };
   } catch (err) {
-    destroyVerifier();
-    setTimeout(() => buildAndRender(), 500);
-    console.error("[sendOtp] Firebase error:", err.code, err.message);
-    return { success: false, error: friendlyError(err.code), code: err.code };
+    console.error("[sendOtp] Error:", err?.message || err);
+    return { success: false, error: "Network error. Please check your connection and try again." };
   }
 };
 
-// ─── Verify OTP ───────────────────────────────────────────────────────────────
+// ─── Verify OTP (via Express Backend → Firebase customToken) ──────────────────
 export const verifyOtp = async (code) => {
   if (!code || String(code).trim().length < 6) {
     return { success: false, error: "Please enter the 6-digit OTP." };
   }
 
-  // LOCAL MODE — validate via server route
-  if (isLocalDev()) {
-    const phone = _pendingPhone || (typeof window !== "undefined" ? sessionStorage.getItem("crewhive_pending_phone") : null);
-    if (!phone) {
-      return { success: false, error: "Session expired. Please enter your number again.", code: "auth/session-expired" };
-    }
-    try {
-      const res = await apiFetch("/api/auth/verify-otp", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone, code: String(code).trim() }),
-      });
-      const data = await res.json();
-      if (!res.ok) return { success: false, error: data.error || "Invalid code." };
-      const credential = await signInWithCustomToken(auth, data.customToken);
-      _pendingPhone = null;
-      if (typeof window !== "undefined") {
-        try { sessionStorage.removeItem("crewhive_pending_phone"); } catch (_) {}
-      }
-      return { success: true, user: credential.user, phone, role: data.role, approved: data.approved };
-    } catch (err) {
-      return { success: false, error: err.message || "Verification failed." };
-    }
+  const phone = _pendingPhone || (typeof window !== "undefined" ? sessionStorage.getItem("crewhive_pending_phone") : null);
+  if (!phone) {
+    return { success: false, error: "Session expired. Please enter your number again.", code: "auth/session-expired" };
   }
 
-  // PRODUCTION — Firebase confirm
-  if (!_confirmationResult) {
-    return { success: false, error: "Session expired. Please request a new OTP.", code: "auth/session-expired" };
-  }
   try {
-    const credential = await _confirmationResult.confirm(String(code).trim());
-    _confirmationResult = null;
+    const res = await apiFetch("/api/auth/verify-otp", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ phone, code: String(code).trim() }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      return { success: false, error: data.error || "Incorrect OTP. Please check and try again." };
+    }
+
+    const credential = await signInWithCustomToken(auth, data.customToken);
     _pendingPhone = null;
-    return { success: true, user: credential.user, phone: credential.user.phoneNumber };
+    if (typeof window !== "undefined") {
+      try { sessionStorage.removeItem("crewhive_pending_phone"); } catch (_) {}
+    }
+    return { success: true, user: credential.user, phone, role: data.role, approved: data.approved };
   } catch (err) {
-    console.error("[verifyOtp] Firebase error:", err.code, err.message);
-    return { success: false, error: friendlyError(err.code), code: err.code };
+    console.error("[verifyOtp] Error:", err?.message || err);
+    return { success: false, error: err?.message || "Verification failed. Please try again." };
   }
 };
 
@@ -245,8 +129,10 @@ export const fetchUserRole = async (phone) => {
 
 // ─── Sign out ─────────────────────────────────────────────────────────────────
 export const signOutUser = async () => {
-  _confirmationResult = null;
+  _pendingPhone = null;
   _lastOtpSentAt = 0;
-  destroyVerifier();
+  if (typeof window !== "undefined") {
+    try { sessionStorage.removeItem("crewhive_pending_phone"); } catch (_) {}
+  }
   await signOut(auth);
 };
